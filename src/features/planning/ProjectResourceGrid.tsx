@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { deleteBooking, updateBookingDates } from '../../lib/repository';
 import type { Booking, Person, Project } from '../../types';
 import { BookingPopover } from './BookingPopover';
@@ -26,7 +27,9 @@ interface ProjectResourceGridProps {
  * New bookings created here are always on `project` — the create popover
  * only offers it (plus absences), not the full project list, since a
  * booking created from inside one project's expanded block landing on a
- * *different* project would be confusing to read back.
+ * *different* project would be confusing to read back. For the same
+ * reason, the grid itself only ever shows bookings that belong to this
+ * project — a resource's assignments elsewhere don't belong here.
  */
 export function ProjectResourceGrid({
   project,
@@ -37,6 +40,8 @@ export function ProjectResourceGrid({
   peopleById,
   conflictsByPerson,
 }: ProjectResourceGridProps) {
+  const projectBookings = useMemo(() => bookings.filter((b) => b.projectId === project.id), [bookings, project.id]);
+
   const {
     dragSelection,
     createPopover,
@@ -58,7 +63,7 @@ export function ProjectResourceGrid({
       <CalendarGrid
         people={people}
         units={units}
-        bookings={bookings}
+        bookings={projectBookings}
         projectsById={projectsById}
         conflictsByPerson={conflictsByPerson}
         dragSelection={dragSelection}
