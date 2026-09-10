@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { approveRequest, refuseRequest, useBookings, usePeople, useProjects, useRequests } from '../../lib/repository';
+import { Equipe } from './Equipe';
 import { NavRail, type PlanningView } from './NavRail';
 import { PlanDeCharge } from './PlanDeCharge';
 import { PlanDeProduction } from './PlanDeProduction';
@@ -33,6 +34,7 @@ export function PlanningApp() {
       )}
       {view === 'production' && <PlanDeProduction people={people} projects={projects} bookings={bookings} />}
       {view === 'semainier' && <Semainier people={people} projects={projects} bookings={bookings} />}
+      {view === 'equipe' && <Equipe people={people} />}
 
       {requestsOpen && (
         <RequestsModal

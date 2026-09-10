@@ -6,11 +6,37 @@ export const ABSENCE_LABELS: Record<AbsenceType, string> = {
   maladie: 'Maladie',
 };
 
+export type AccessLevel = 'admin' | 'responsable' | 'user';
+
+export const ACCESS_LEVEL_LABELS: Record<AccessLevel, string> = {
+  admin: 'Admin',
+  responsable: 'Responsable',
+  user: 'User',
+};
+
+/** Fixed list of job titles offered in the Équipe screen's "poste" dropdown. */
+export const JOB_TITLES = [
+  'Directeur·rice de production',
+  'Directeur·rice produit',
+  'Directeur·rice financier·ère',
+  'Chargé·e de production',
+  'Assistant·e de production',
+  'Chef·fe de projet',
+  'Réalisateur·rice',
+  'Game designer',
+  'Character artist',
+  'Développeur·se gameplay',
+  'Monteur·se',
+  'Sound designer',
+] as const;
+
 export interface Person {
   id: string;
   name: string;
   role: string;
   dailyRate: number;
+  /** Access level for future role-based auth — see the Équipe screen's own notice. Defaults to 'user'. */
+  accessLevel?: AccessLevel;
 }
 
 export type ProjectStatus = 'sous_controle' | 'tendu' | 'depassement';

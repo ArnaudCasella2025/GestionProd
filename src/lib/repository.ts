@@ -58,6 +58,18 @@ export async function updateBookingDates(
   await updateDoc(doc(db, 'bookings', id), { startDate, endDate, startHalf, endHalf });
 }
 
+export async function createPerson(person: Omit<Person, 'id'>) {
+  await addDoc(collection(db, 'people'), person);
+}
+
+export async function updatePerson(id: string, changes: Omit<Person, 'id'>) {
+  await updateDoc(doc(db, 'people', id), changes);
+}
+
+export async function deletePerson(id: string) {
+  await deleteDoc(doc(db, 'people', id));
+}
+
 export async function approveRequest(request: AbsenceRequest) {
   const batch = writeBatch(db);
   const bookingRef = doc(collection(db, 'bookings'));
