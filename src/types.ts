@@ -23,6 +23,8 @@ export interface Project {
   budget: number;
 }
 
+export type DayHalf = 'AM' | 'PM';
+
 export interface Booking {
   id: string;
   personId: string;
@@ -34,6 +36,10 @@ export interface Booking {
   startDate: string;
   /** ISO date (YYYY-MM-DD), inclusive. */
   endDate: string;
+  /** Which half of startDate the booking begins on. Defaults to 'AM' (start of day). */
+  startHalf?: DayHalf;
+  /** Which half of endDate the booking ends on. Defaults to 'PM' (end of day). */
+  endHalf?: DayHalf;
 }
 
 export type RequestStatus = 'pending' | 'approved' | 'refused';

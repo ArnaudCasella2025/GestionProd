@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from './firebase';
-import type { AbsenceRequest, Booking, Person, Project } from '../types';
+import type { AbsenceRequest, Booking, DayHalf, Person, Project } from '../types';
 import { DEMO_PEOPLE, DEMO_PROJECTS, DEMO_BOOKINGS, DEMO_REQUESTS } from '../data/demoData';
 
 function useCollectionData<T>(name: string): { data: T[]; loading: boolean } {
@@ -48,8 +48,14 @@ export async function deleteBooking(id: string) {
   await deleteDoc(doc(db, 'bookings', id));
 }
 
-export async function updateBookingDates(id: string, startDate: string, endDate: string) {
-  await updateDoc(doc(db, 'bookings', id), { startDate, endDate });
+export async function updateBookingDates(
+  id: string,
+  startDate: string,
+  endDate: string,
+  startHalf: DayHalf,
+  endHalf: DayHalf,
+) {
+  await updateDoc(doc(db, 'bookings', id), { startDate, endDate, startHalf, endHalf });
 }
 
 export async function approveRequest(request: AbsenceRequest) {

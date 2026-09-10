@@ -181,7 +181,7 @@ export function PlanDeCharge() {
           <div className="pdc-header-rule-thin" />
           <div className="pdc-status-bar">
             <span>{formatFullDate(new Date())}</span>
-            <span>{totalDaysReserved} jours·homme réservés</span>
+            <span>{totalDaysReserved.toLocaleString('fr-FR')} jours·homme réservés</span>
             {conflictCount > 0 ? (
               <button type="button" className="pdc-conflict-trigger pdc-conflict-count" onClick={() => setConflictsOpen(true)}>
                 {conflictCount} conflit{conflictCount > 1 ? 's' : ''}
@@ -286,8 +286,8 @@ export function PlanDeCharge() {
               deleteBooking(detailPanel.booking.id).catch(console.error);
               setDetailPanel(null);
             }}
-            onSaveDates={(startDate, endDate) => {
-              updateBookingDates(detailPanel.booking.id, startDate, endDate).catch(console.error);
+            onSaveDates={(startDate, endDate, startHalf, endHalf) => {
+              updateBookingDates(detailPanel.booking.id, startDate, endDate, startHalf, endHalf).catch(console.error);
               setDetailPanel(null);
             }}
           />

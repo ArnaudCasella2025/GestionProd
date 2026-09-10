@@ -126,9 +126,22 @@ export function CalendarGrid({
                     // nobody is booked to work on a non-worked day.
                     const segments = splitAtWeekends(units, startIdx, endIdx);
 
+                    // Day-granularity zooms only: trim half a column off the very
+                    // start/end of the booking when it begins or ends mid-day.
+                    const isDayUnit = units[startIdx]?.startIso === units[startIdx]?.endIso;
+
                     return segments.map(([segStart, segEnd], segIdx) => {
-                      const left = units.slice(0, segStart).reduce((s, u) => s + u.widthPx, 0);
-                      const width = units.slice(segStart, segEnd + 1).reduce((s, u) => s + u.widthPx, 0);
+                      let left = units.slice(0, segStart).reduce((s, u) => s + u.widthPx, 0);
+                      let width = units.slice(segStart, segEnd + 1).reduce((s, u) => s + u.widthPx, 0);
+
+                      if (isDayUnit && segStart === startIdx && booking.startHalf === 'PM') {
+                        const half = units[segStart].widthPx / 2;
+                        left += half;
+                        width -= half;
+                      }
+                      if (isDayUnit && segEnd === endIdx && booking.endHalf === 'AM') {
+                        width -= units[segEnd].widthPx / 2;
+                      }
 
                       const style: CSSProperties = {
                         left,

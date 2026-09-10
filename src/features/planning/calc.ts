@@ -1,8 +1,32 @@
 import { addDays, fromISODate, toISODate } from '../../lib/dates';
-import type { Booking, Person, Project, ProjectStatus } from '../../types';
+import type { Booking, DayHalf, Person, Project, ProjectStatus } from '../../types';
 
 export function projectBookingsFor(bookings: Booking[], projectId: string): Booking[] {
   return bookings.filter((b) => b.projectId === projectId);
+}
+
+/** Which half(s) of a given day a booking covers — empty if the day is outside its range. */
+export function coveredHalves(booking: Booking, dayIso: string): DayHalf[] {
+  if (dayIso < booking.startDate || dayIso > booking.endDate) return [];
+  const startHalf = booking.startHalf ?? 'AM';
+  const endHalf = booking.endHalf ?? 'PM';
+  const isStartDay = dayIso === booking.startDate;
+  const isEndDay = dayIso === booking.endDate;
+
+  if (isStartDay && isEndDay) {
+    if (startHalf === 'AM' && endHalf === 'PM') return ['AM', 'PM'];
+    if (startHalf === 'AM' && endHalf === 'AM') return ['AM'];
+    if (startHalf === 'PM' && endHalf === 'PM') return ['PM'];
+    return []; // PM -> AM would end before it starts; treat as nothing booked
+  }
+  if (isStartDay) return startHalf === 'PM' ? ['PM'] : ['AM', 'PM'];
+  if (isEndDay) return endHalf === 'AM' ? ['AM'] : ['AM', 'PM'];
+  return ['AM', 'PM'];
+}
+
+/** Fraction of a day (0, 0.5 or 1) a booking covers. */
+function dayFraction(booking: Booking, dayIso: string): number {
+  return coveredHalves(booking, dayIso).length * 0.5;
 }
 
 /** Sum of daily rates for a booking's date range, restricted to days matching the predicate. */
@@ -13,7 +37,7 @@ function sumDailyCost(booking: Booking, person: Person | undefined, dayFilter: (
   let total = 0;
   for (let d = start; d <= end; d = addDays(d, 1)) {
     const iso = toISODate(d);
-    if (dayFilter(iso)) total += person.dailyRate;
+    if (dayFilter(iso)) total += person.dailyRate * dayFraction(booking, iso);
   }
   return total;
 }
@@ -54,22 +78,29 @@ export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
   depassement: 'Dépassement',
 };
 
-/** Days (ISO) where a person has more than one *project* booking — a double-booking conflict. */
+/**
+ * Days (ISO) where a person has more than one *project* booking overlapping
+ * the same half of the day — a double-booking conflict. A morning booking on
+ * one project and an afternoon booking on another is not a conflict.
+ */
 export function computeConflictDays(bookings: Booking[]): Map<string, Set<string>> {
   const conflictsByPerson = new Map<string, Set<string>>();
-  const countByPersonDay = new Map<string, number>();
+  const countByPersonDayHalf = new Map<string, number>();
 
   for (const booking of bookings) {
     if (!booking.projectId) continue;
     const start = fromISODate(booking.startDate);
     const end = fromISODate(booking.endDate);
     for (let d = start; d <= end; d = addDays(d, 1)) {
-      const key = `${booking.personId}__${toISODate(d)}`;
-      countByPersonDay.set(key, (countByPersonDay.get(key) ?? 0) + 1);
+      const iso = toISODate(d);
+      for (const half of coveredHalves(booking, iso)) {
+        const key = `${booking.personId}__${iso}__${half}`;
+        countByPersonDayHalf.set(key, (countByPersonDayHalf.get(key) ?? 0) + 1);
+      }
     }
   }
 
-  for (const [key, count] of countByPersonDay) {
+  for (const [key, count] of countByPersonDayHalf) {
     if (count > 1) {
       const [personId, iso] = key.split('__');
       if (!conflictsByPerson.has(personId)) conflictsByPerson.set(personId, new Set());
@@ -98,7 +129,9 @@ export function totalPersonDaysReserved(bookings: Booking[]): number {
   for (const booking of bookings) {
     const start = fromISODate(booking.startDate);
     const end = fromISODate(booking.endDate);
-    total += Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+    for (let d = start; d <= end; d = addDays(d, 1)) {
+      total += dayFraction(booking, toISODate(d));
+    }
   }
   return total;
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { fromISODate } from '../../lib/dates';
-import { ABSENCE_LABELS, type Booking, type Person, type Project } from '../../types';
+import { addDays, fromISODate, toISODate } from '../../lib/dates';
+import { ABSENCE_LABELS, type Booking, type DayHalf, type Person, type Project } from '../../types';
+import { coveredHalves } from './calc';
 
 interface DetailPanelProps {
   x: number;
@@ -9,19 +10,34 @@ interface DetailPanelProps {
   person: Person | undefined;
   project: Project | undefined;
   onRelease: () => void;
-  onSaveDates: (startDate: string, endDate: string) => void;
+  onSaveDates: (startDate: string, endDate: string, startHalf: DayHalf, endHalf: DayHalf) => void;
+}
+
+function durationDays(startDate: string, endDate: string, startHalf: DayHalf, endHalf: DayHalf): number {
+  if (endDate < startDate) return 0;
+  const probe: Booking = { id: '', personId: '', startDate, endDate, startHalf, endHalf };
+  let total = 0;
+  for (let d = fromISODate(startDate); d <= fromISODate(endDate); d = addDays(d, 1)) {
+    total += coveredHalves(probe, toISODate(d)).length * 0.5;
+  }
+  return total;
 }
 
 export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveDates }: DetailPanelProps) {
   const [startDate, setStartDate] = useState(booking.startDate);
   const [endDate, setEndDate] = useState(booking.endDate);
+  const [startHalf, setStartHalf] = useState<DayHalf>(booking.startHalf ?? 'AM');
+  const [endHalf, setEndHalf] = useState<DayHalf>(booking.endHalf ?? 'PM');
 
   const invalidRange = endDate < startDate;
-  const hasChanges = startDate !== booking.startDate || endDate !== booking.endDate;
+  const sameDay = startDate === endDate;
+  const hasChanges =
+    startDate !== booking.startDate ||
+    endDate !== booking.endDate ||
+    startHalf !== (booking.startHalf ?? 'AM') ||
+    endHalf !== (booking.endHalf ?? 'PM');
 
-  const days = invalidRange
-    ? 0
-    : Math.round((fromISODate(endDate).getTime() - fromISODate(startDate).getTime()) / 86_400_000) + 1;
+  const days = invalidRange ? 0 : durationDays(startDate, endDate, startHalf, endHalf);
   const cost = person ? days * person.dailyRate : 0;
 
   return (
@@ -54,17 +70,88 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
         </div>
       </div>
 
+      {!invalidRange &&
+        (sameDay ? (
+          <div className="seg">
+            <label className="seg-opt">
+              <input
+                type="radio"
+                name="detail-daymode"
+                checked={startHalf === 'AM' && endHalf === 'PM'}
+                onChange={() => {
+                  setStartHalf('AM');
+                  setEndHalf('PM');
+                }}
+              />
+              Journée
+            </label>
+            <label className="seg-opt">
+              <input
+                type="radio"
+                name="detail-daymode"
+                checked={startHalf === 'AM' && endHalf === 'AM'}
+                onChange={() => {
+                  setStartHalf('AM');
+                  setEndHalf('AM');
+                }}
+              />
+              Matin
+            </label>
+            <label className="seg-opt">
+              <input
+                type="radio"
+                name="detail-daymode"
+                checked={startHalf === 'PM' && endHalf === 'PM'}
+                onChange={() => {
+                  setStartHalf('PM');
+                  setEndHalf('PM');
+                }}
+              />
+              Après-midi
+            </label>
+          </div>
+        ) : (
+          <>
+            <div className="field">
+              <label>Premier jour</label>
+              <div className="seg">
+                <label className="seg-opt">
+                  <input type="radio" name="detail-start-half" checked={startHalf === 'AM'} onChange={() => setStartHalf('AM')} />
+                  Journée complète
+                </label>
+                <label className="seg-opt">
+                  <input type="radio" name="detail-start-half" checked={startHalf === 'PM'} onChange={() => setStartHalf('PM')} />
+                  Après-midi seulement
+                </label>
+              </div>
+            </div>
+            <div className="field">
+              <label>Dernier jour</label>
+              <div className="seg">
+                <label className="seg-opt">
+                  <input type="radio" name="detail-end-half" checked={endHalf === 'PM'} onChange={() => setEndHalf('PM')} />
+                  Journée complète
+                </label>
+                <label className="seg-opt">
+                  <input type="radio" name="detail-end-half" checked={endHalf === 'AM'} onChange={() => setEndHalf('AM')} />
+                  Matin seulement
+                </label>
+              </div>
+            </div>
+          </>
+        ))}
+
       {project && !invalidRange && (
         <div className="pdc-detail-row">
           <span className="text-muted">Coût</span>
           <span>
-            {days} j · {cost.toLocaleString('fr-FR')} €
+            {days.toLocaleString('fr-FR')} j · {cost.toLocaleString('fr-FR')} €
           </span>
         </div>
       )}
 
       {hasChanges && !invalidRange && (
-        <button type="button" className="btn btn-primary btn-block" onClick={() => onSaveDates(startDate, endDate)}>
+        <button type="button" className="btn btn-primary btn-block" onClick={() => onSaveDates(startDate, endDate, startHalf, endHalf)}>
           Enregistrer les nouvelles dates
         </button>
       )}
