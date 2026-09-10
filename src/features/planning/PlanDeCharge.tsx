@@ -1,29 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { formatFullDate, formatMonthLabel } from '../../lib/dates';
-import {
-  approveRequest,
-  createBooking,
-  deleteBooking,
-  refuseRequest,
-  seedDemoData,
-  updateBookingDates,
-  useBookings,
-  usePeople,
-  useProjects,
-  useRequests,
-} from '../../lib/repository';
+import { deleteBooking, seedDemoData, updateBookingDates } from '../../lib/repository';
 import { firebaseConfigured } from '../../lib/firebase';
-import type { AbsenceType, Booking, ZoomLevel } from '../../types';
+import type { Booking, Person, Project, ZoomLevel } from '../../types';
 import { BookingPopover } from './BookingPopover';
-import { CalendarGrid, type DragSelection } from './CalendarGrid';
+import { CalendarGrid } from './CalendarGrid';
 import { CommandPalette } from './CommandPalette';
 import { ConflictsModal } from './ConflictsModal';
 import { DetailPanel } from './DetailPanel';
-import { NavRail } from './NavRail';
 import { ProjectCards } from './ProjectCards';
-import { RequestsModal } from './RequestsModal';
 import { computeConflictDays, totalPersonDaysReserved } from './calc';
 import { buildUnits, shiftAnchor } from './timeUnits';
+import { useBookingGrid } from './useBookingGrid';
 
 const ZOOM_OPTIONS: { value: ZoomLevel; label: string }[] = [
   { value: 'semaine', label: 'Semaine' },
@@ -31,33 +19,17 @@ const ZOOM_OPTIONS: { value: ZoomLevel; label: string }[] = [
   { value: 'annee', label: 'Année' },
 ];
 
-interface CreatePopoverState {
-  x: number;
-  y: number;
-  rows: [number, number];
-  cols: [number, number];
+interface PlanDeChargeProps {
+  people: Person[];
+  peopleLoading: boolean;
+  projects: Project[];
+  bookings: Booking[];
 }
 
-interface DetailPanelState {
-  x: number;
-  y: number;
-  booking: Booking;
-}
-
-export function PlanDeCharge() {
-  const { data: people, loading: peopleLoading } = usePeople();
-  const { data: projects } = useProjects();
-  const { data: bookings } = useBookings();
-  const { data: requests } = useRequests();
-
+export function PlanDeCharge({ people, peopleLoading, projects, bookings }: PlanDeChargeProps) {
   const [anchor, setAnchor] = useState(() => new Date());
   const [zoom, setZoom] = useState<ZoomLevel>('semaine');
-  const [dragSelection, setDragSelection] = useState<DragSelection | null>(null);
-  const isDragging = useRef(false);
 
-  const [createPopover, setCreatePopover] = useState<CreatePopoverState | null>(null);
-  const [detailPanel, setDetailPanel] = useState<DetailPanelState | null>(null);
-  const [requestsOpen, setRequestsOpen] = useState(false);
   const [conflictsOpen, setConflictsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -69,20 +41,29 @@ export function PlanDeCharge() {
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const conflictsByPerson = useMemo(() => computeConflictDays(bookings), [bookings]);
 
+  const {
+    dragSelection,
+    createPopover,
+    detailPanel,
+    setDetailPanel,
+    closePanels,
+    handleCellMouseDown,
+    handleCellMouseEnter,
+    handleCellMouseUp,
+    applyBooking,
+    handleBookingClick,
+  } = useBookingGrid(people, units);
+
   const totalDaysReserved = useMemo(() => totalPersonDaysReserved(bookings), [bookings]);
   const conflictCount = useMemo(
     () => Array.from(conflictsByPerson.values()).reduce((sum, days) => sum + days.size, 0),
     [conflictsByPerson],
   );
-  const pendingRequestCount = requests.filter((r) => r.status === 'pending').length;
-
   const closeAllPanels = useCallback(() => {
-    setCreatePopover(null);
-    setDetailPanel(null);
-    setRequestsOpen(false);
+    closePanels();
     setConflictsOpen(false);
     setPaletteOpen(false);
-  }, []);
+  }, [closePanels]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -96,54 +77,10 @@ export function PlanDeCharge() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [closeAllPanels]);
 
-  const handleCellMouseDown = useCallback((row: number, col: number) => {
-    isDragging.current = true;
-    setDragSelection({ rowA: row, colA: col, rowB: row, colB: col });
-  }, []);
-
-  const handleCellMouseEnter = useCallback((row: number, col: number) => {
-    if (!isDragging.current) return;
-    setDragSelection((prev) => (prev ? { ...prev, rowB: row, colB: col } : prev));
-  }, []);
-
-  const handleCellMouseUp = useCallback(
-    (evt: MouseEvent<HTMLDivElement>) => {
-      if (!isDragging.current || !dragSelection) return;
-      isDragging.current = false;
-      const rows: [number, number] = [Math.min(dragSelection.rowA, dragSelection.rowB), Math.max(dragSelection.rowA, dragSelection.rowB)];
-      const cols: [number, number] = [Math.min(dragSelection.colA, dragSelection.colB), Math.max(dragSelection.colA, dragSelection.colB)];
-      setCreatePopover({ x: evt.clientX, y: evt.clientY, rows, cols });
-    },
-    [dragSelection],
-  );
-
-  const applyBooking = useCallback(
-    (payload: { projectId?: string; absenceType?: AbsenceType }) => {
-      if (!createPopover) return;
-      const [rowStart, rowEnd] = createPopover.rows;
-      const [colStart, colEnd] = createPopover.cols;
-      const startDate = units[colStart].startIso;
-      const endDate = units[colEnd].endIso;
-      for (let row = rowStart; row <= rowEnd; row++) {
-        const person = people[row];
-        if (!person) continue;
-        createBooking({ personId: person.id, startDate, endDate, ...payload }).catch(console.error);
-      }
-      setCreatePopover(null);
-      setDragSelection(null);
-    },
-    [createPopover, units, people],
-  );
-
-  const handleBookingClick = useCallback((booking: Booking, evt: MouseEvent) => {
-    evt.stopPropagation();
-    setDetailPanel({ x: evt.clientX, y: evt.clientY, booking });
-  }, []);
-
   const handleEditFromConflicts = useCallback((booking: Booking, evt: MouseEvent) => {
     setConflictsOpen(false);
     setDetailPanel({ x: evt.clientX, y: evt.clientY, booking });
-  }, []);
+  }, [setDetailPanel]);
 
   const handleGoToPerson = useCallback((personId: string) => {
     const idx = people.findIndex((p) => p.id === personId);
@@ -163,9 +100,7 @@ export function PlanDeCharge() {
   const showEmptyState = !peopleLoading && people.length === 0;
 
   return (
-    <div className="pdc-layout">
-      <NavRail projects={projects} pendingRequestCount={pendingRequestCount} onOpenRequests={() => setRequestsOpen(true)} />
-
+    <>
       <main className="pdc-main">
         {!firebaseConfigured && (
           <div className="pdc-warning">
@@ -261,7 +196,7 @@ export function PlanDeCharge() {
 
       {createPopover && (
         <>
-          <div className="pdc-popover-scrim" onClick={() => setCreatePopover(null)} />
+          <div className="pdc-popover-scrim" onClick={closePanels} />
           <BookingPopover
             x={createPopover.x}
             y={createPopover.y}
@@ -294,16 +229,6 @@ export function PlanDeCharge() {
         </>
       )}
 
-      {requestsOpen && (
-        <RequestsModal
-          requests={requests}
-          peopleById={peopleById}
-          onApprove={(request) => approveRequest(request).catch(console.error)}
-          onRefuse={(id) => refuseRequest(id).catch(console.error)}
-          onClose={() => setRequestsOpen(false)}
-        />
-      )}
-
       {conflictsOpen && (
         <ConflictsModal
           conflictsByPerson={conflictsByPerson}
@@ -325,6 +250,6 @@ export function PlanDeCharge() {
           onClose={() => setPaletteOpen(false)}
         />
       )}
-    </div>
+    </>
   );
 }

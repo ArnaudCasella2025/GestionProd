@@ -5,6 +5,46 @@ export function projectBookingsFor(bookings: Booking[], projectId: string): Book
   return bookings.filter((b) => b.projectId === projectId);
 }
 
+/** The [earliest start, latest end] of a project's bookings, or null if it has none. */
+export function projectDateRange(bookings: Booking[], projectId: string): { start: string; end: string } | null {
+  const relevant = projectBookingsFor(bookings, projectId);
+  if (relevant.length === 0) return null;
+  let start = relevant[0].startDate;
+  let end = relevant[0].endDate;
+  for (const b of relevant) {
+    if (b.startDate < start) start = b.startDate;
+    if (b.endDate > end) end = b.endDate;
+  }
+  return { start, end };
+}
+
+/** The [earliest start, latest end] across every project booking, or null if there are none. */
+export function globalBookingRange(bookings: Booking[]): { start: string; end: string } | null {
+  const relevant = bookings.filter((b) => b.projectId);
+  if (relevant.length === 0) return null;
+  let start = relevant[0].startDate;
+  let end = relevant[0].endDate;
+  for (const b of relevant) {
+    if (b.startDate < start) start = b.startDate;
+    if (b.endDate > end) end = b.endDate;
+  }
+  return { start, end };
+}
+
+/** The distinct people booked on a project, in first-booked order. */
+export function peopleForProject(bookings: Booking[], people: Person[], projectId: string): Person[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const b of bookings) {
+    if (b.projectId === projectId && !seen.has(b.personId)) {
+      seen.add(b.personId);
+      ids.push(b.personId);
+    }
+  }
+  const peopleById = new Map(people.map((p) => [p.id, p]));
+  return ids.map((id) => peopleById.get(id)).filter((p): p is Person => Boolean(p));
+}
+
 /** Which half(s) of a given day a booking covers — empty if the day is outside its range. */
 export function coveredHalves(booking: Booking, dayIso: string): DayHalf[] {
   if (dayIso < booking.startDate || dayIso > booking.endDate) return [];

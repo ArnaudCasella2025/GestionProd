@@ -1,20 +1,23 @@
 import type { Project } from '../../types';
 
+export type PlanningView = 'charge' | 'production';
+
 interface NavRailProps {
   projects: Project[];
   pendingRequestCount: number;
   onOpenRequests: () => void;
+  activeView: PlanningView;
+  onNavigate: (view: PlanningView) => void;
 }
 
-const SECTIONS = [
-  { label: 'Plan de charge', active: true },
-  { label: 'Semainier', active: false },
-  { label: 'Timesheets', active: false },
-  { label: 'Projets', active: false },
-  { label: 'Équipe', active: false },
+const SECTIONS: { label: string; view: PlanningView }[] = [
+  { label: 'Plan de charge', view: 'charge' },
+  { label: 'Plan de production', view: 'production' },
 ];
 
-export function NavRail({ projects, pendingRequestCount, onOpenRequests }: NavRailProps) {
+const SOON_SECTIONS = ['Semainier', 'Timesheets', 'Équipe'];
+
+export function NavRail({ projects, pendingRequestCount, onOpenRequests, activeView, onNavigate }: NavRailProps) {
   return (
     <nav className="pdc-rail">
       <div className="nav-brand" style={{ padding: '0 var(--space-2)' }}>
@@ -28,10 +31,24 @@ export function NavRail({ projects, pendingRequestCount, onOpenRequests }: NavRa
 
       <ul className="pdc-rail-sections">
         {SECTIONS.map((section) => (
-          <li key={section.label}>
-            <a href="#" aria-current={section.active ? 'page' : undefined} onClick={(e) => e.preventDefault()}>
+          <li key={section.view}>
+            <a
+              href="#"
+              aria-current={activeView === section.view ? 'page' : undefined}
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigate(section.view);
+              }}
+            >
               {section.label}
-              {!section.active && <span className="pdc-soon">bientôt</span>}
+            </a>
+          </li>
+        ))}
+        {SOON_SECTIONS.map((label) => (
+          <li key={label}>
+            <a href="#" onClick={(e) => e.preventDefault()}>
+              {label}
+              <span className="pdc-soon">bientôt</span>
             </a>
           </li>
         ))}
