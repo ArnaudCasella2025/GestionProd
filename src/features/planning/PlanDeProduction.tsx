@@ -1,36 +1,14 @@
 import { useMemo, useState } from 'react';
-import { addMonths, formatFullDate, formatMonthShort, fromISODate, startOfMonth, toISODate } from '../../lib/dates';
+import { formatFullDate, fromISODate } from '../../lib/dates';
 import type { Booking, Person, Project } from '../../types';
 import { ProjectResourceGrid } from './ProjectResourceGrid';
-import { computeConflictDays, globalBookingRange, peopleForProject, projectDateRange } from './calc';
-import { buildUnits, shiftAnchor } from './timeUnits';
+import { computeConflictDays, peopleForProject, projectDateRange } from './calc';
+import { buildUnits, groupByMonth, shiftAnchor, unitRangeForDates } from './timeUnits';
 
 interface PlanDeProductionProps {
   people: Person[];
   projects: Project[];
   bookings: Booking[];
-}
-
-function percentBetween(dateIso: string, rangeStart: string, rangeEnd: string): number {
-  const total = fromISODate(rangeEnd).getTime() - fromISODate(rangeStart).getTime();
-  if (total <= 0) return 0;
-  return ((fromISODate(dateIso).getTime() - fromISODate(rangeStart).getTime()) / total) * 100;
-}
-
-/** Month-start tick positions (as a percentage) across a date range, for the timeline header. */
-function monthTicks(rangeStart: string, rangeEnd: string): { label: string; pct: number }[] {
-  const ticks: { label: string; pct: number }[] = [];
-  let cursor = startOfMonth(fromISODate(rangeStart));
-  const end = fromISODate(rangeEnd);
-  while (cursor <= end) {
-    const iso = toISODate(cursor);
-    ticks.push({
-      label: `${formatMonthShort(cursor)} ${cursor.getFullYear()}`,
-      pct: Math.max(percentBetween(iso, rangeStart, rangeEnd), 0),
-    });
-    cursor = addMonths(cursor, 1);
-  }
-  return ticks;
 }
 
 export function PlanDeProduction({ people, projects, bookings }: PlanDeProductionProps) {
@@ -41,9 +19,25 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const conflictsByPerson = useMemo(() => computeConflictDays(bookings), [bookings]);
-  const globalRange = useMemo(() => globalBookingRange(bookings), [bookings]);
-  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const ticks = useMemo(() => (globalRange ? monthTicks(globalRange.start, globalRange.end) : []), [globalRange]);
+
+  // Every position below (month ticks, project bars, today marker) is a
+  // percentage of this SAME `units` array that the expanded per-project
+  // grids use — so the overview and the expanded grids always agree on
+  // which year is showing, and navigating years moves both together.
+  const monthTicks = useMemo(() => {
+    const groups = groupByMonth(units);
+    let cursor = 0;
+    return groups.map((g) => {
+      const pct = (cursor / units.length) * 100;
+      cursor += g.span;
+      return { label: g.label, pct };
+    });
+  }, [units]);
+
+  const todayPct = useMemo(() => {
+    const idx = units.findIndex((u) => u.isToday);
+    return idx === -1 ? null : (idx / units.length) * 100;
+  }, [units]);
 
   const toggle = (projectId: string) => {
     setExpanded((prev) => {
@@ -90,7 +84,8 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
             <span className="pdc-color-dot" style={{ visibility: 'hidden' }} />
             <div className="ppr-project-info" />
             <div className="ppr-sparkline-track ppr-ticks-track">
-              {ticks.map((tick) => (
+              {todayPct !== null && <div className="ppr-sparkline-today" style={{ left: `${todayPct}%` }} />}
+              {monthTicks.map((tick) => (
                 <div key={tick.label} className="ppr-tick" style={{ left: `${tick.pct}%` }}>
                   {tick.label}
                 </div>
@@ -102,17 +97,14 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
             const range = projectDateRange(bookings, project.id);
             const projectPeople = peopleForProject(bookings, people, project.id);
             const isExpanded = expanded.has(project.id);
+            const visibleRange = range ? unitRangeForDates(units, range.start, range.end) : null;
 
             let leftPct = 0;
             let widthPct = 0;
-            let todayPct: number | null = null;
-            if (range && globalRange) {
-              leftPct = percentBetween(range.start, globalRange.start, globalRange.end);
-              const rightPct = percentBetween(range.end, globalRange.start, globalRange.end);
-              widthPct = Math.max(rightPct - leftPct, 1.5);
-              if (todayIso >= globalRange.start && todayIso <= globalRange.end) {
-                todayPct = percentBetween(todayIso, globalRange.start, globalRange.end);
-              }
+            if (visibleRange) {
+              const [startIdx, endIdx] = visibleRange;
+              leftPct = (startIdx / units.length) * 100;
+              widthPct = Math.max(((endIdx - startIdx + 1) / units.length) * 100, 1.5);
             }
 
             return (
@@ -134,7 +126,7 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
                   </div>
                   <div className="ppr-sparkline-track">
                     {todayPct !== null && <div className="ppr-sparkline-today" style={{ left: `${todayPct}%` }} />}
-                    {range ? (
+                    {visibleRange && range ? (
                       <div
                         className="ppr-sparkline-bar"
                         style={{ left: `${leftPct}%`, width: `${widthPct}%`, background: project.color }}
@@ -143,7 +135,7 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
                         <span className="ppr-sparkline-label">{project.name}</span>
                       </div>
                     ) : (
-                      <span className="text-muted ppr-sparkline-empty">Aucune réservation</span>
+                      <span className="text-muted ppr-sparkline-empty">Aucune réservation en {anchor.getFullYear()}</span>
                     )}
                   </div>
                 </div>
