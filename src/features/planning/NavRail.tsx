@@ -1,6 +1,6 @@
 import type { Project } from '../../types';
 
-export type PlanningView = 'charge' | 'production';
+export type PlanningView = 'charge' | 'production' | 'semainier';
 
 interface NavRailProps {
   projects: Project[];
@@ -13,9 +13,10 @@ interface NavRailProps {
 const SECTIONS: { label: string; view: PlanningView }[] = [
   { label: 'Plan de charge', view: 'charge' },
   { label: 'Plan de production', view: 'production' },
+  { label: 'Semainier', view: 'semainier' },
 ];
 
-const SOON_SECTIONS = ['Semainier', 'Timesheets', 'Équipe'];
+const SOON_SECTIONS = ['Timesheets', 'Équipe'];
 
 export function NavRail({ projects, pendingRequestCount, onOpenRequests, activeView, onNavigate }: NavRailProps) {
   return (

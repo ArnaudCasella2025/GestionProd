@@ -4,6 +4,7 @@ import { NavRail, type PlanningView } from './NavRail';
 import { PlanDeCharge } from './PlanDeCharge';
 import { PlanDeProduction } from './PlanDeProduction';
 import { RequestsModal } from './RequestsModal';
+import { Semainier } from './Semainier';
 
 export function PlanningApp() {
   const { data: people, loading: peopleLoading } = usePeople();
@@ -27,11 +28,11 @@ export function PlanningApp() {
         onNavigate={setView}
       />
 
-      {view === 'charge' ? (
+      {view === 'charge' && (
         <PlanDeCharge people={people} peopleLoading={peopleLoading} projects={projects} bookings={bookings} />
-      ) : (
-        <PlanDeProduction people={people} projects={projects} bookings={bookings} />
       )}
+      {view === 'production' && <PlanDeProduction people={people} projects={projects} bookings={bookings} />}
+      {view === 'semainier' && <Semainier people={people} projects={projects} bookings={bookings} />}
 
       {requestsOpen && (
         <RequestsModal
