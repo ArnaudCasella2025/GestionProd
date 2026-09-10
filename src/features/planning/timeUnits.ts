@@ -91,6 +91,27 @@ export function unitRangeForDates(units: TimeUnit[], startDateIso: string, endDa
   return [startIdx, endIdx];
 }
 
+/**
+ * Splits a [startIdx, endIdx] unit range into contiguous runs of non-weekend
+ * units, so a booking bar doesn't visually cover non-worked weekend days.
+ */
+export function splitAtWeekends(units: TimeUnit[], startIdx: number, endIdx: number): [number, number][] {
+  const segments: [number, number][] = [];
+  let segStart: number | null = null;
+  for (let i = startIdx; i <= endIdx; i++) {
+    if (units[i].isWeekend) {
+      if (segStart !== null) {
+        segments.push([segStart, i - 1]);
+        segStart = null;
+      }
+    } else if (segStart === null) {
+      segStart = i;
+    }
+  }
+  if (segStart !== null) segments.push([segStart, endIdx]);
+  return segments;
+}
+
 /** Groups consecutive units sharing the same month-group label, for the month band header. */
 export function groupByMonth(units: TimeUnit[]): { label: string; span: number }[] {
   const groups: { label: string; span: number }[] = [];

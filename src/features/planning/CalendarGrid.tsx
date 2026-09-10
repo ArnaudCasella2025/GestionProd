@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent } from 'react';
 import type { Booking, Person, Project } from '../../types';
 import { ABSENCE_LABELS } from '../../types';
-import { groupByMonth, unitRangeForDates, type TimeUnit } from './timeUnits';
+import { groupByMonth, splitAtWeekends, unitRangeForDates, type TimeUnit } from './timeUnits';
 
 export interface DragSelection {
   rowA: number;
@@ -111,36 +111,44 @@ export function CalendarGrid({
                     );
                   })}
 
-                  {personBookings.map((booking) => {
+                  {personBookings.flatMap((booking) => {
                     const range = unitRangeForDates(units, booking.startDate, booking.endDate);
-                    if (!range) return null;
+                    if (!range) return [];
                     const [startIdx, endIdx] = range;
-                    const left = units.slice(0, startIdx).reduce((s, u) => s + u.widthPx, 0);
-                    const width = units.slice(startIdx, endIdx + 1).reduce((s, u) => s + u.widthPx, 0);
                     const project = booking.projectId ? projectsById.get(booking.projectId) : undefined;
+                    const label = project ? project.name : ABSENCE_LABELS[booking.absenceType!];
                     const hasConflict =
                       booking.projectId &&
                       conflictDays &&
                       units.slice(startIdx, endIdx + 1).some((u) => conflictDays.has(u.startIso));
 
-                    const style: CSSProperties = {
-                      left,
-                      width: Math.max(width - 3, 4),
-                      background: project ? project.color : 'repeating-linear-gradient(45deg, var(--color-neutral-400), var(--color-neutral-400) 4px, var(--color-neutral-200) 4px, var(--color-neutral-200) 8px)',
-                    };
+                    // Skip weekend columns instead of drawing one bar across them —
+                    // nobody is booked to work on a non-worked day.
+                    const segments = splitAtWeekends(units, startIdx, endIdx);
 
-                    return (
-                      <button
-                        key={booking.id}
-                        type="button"
-                        className={`pdc-bar${hasConflict ? ' is-conflict' : ''}`}
-                        style={style}
-                        onClick={(e) => onBookingClick(booking, e)}
-                        title={project ? project.name : ABSENCE_LABELS[booking.absenceType!]}
-                      >
-                        <span className="pdc-bar-label">{project ? project.name : ABSENCE_LABELS[booking.absenceType!]}</span>
-                      </button>
-                    );
+                    return segments.map(([segStart, segEnd], segIdx) => {
+                      const left = units.slice(0, segStart).reduce((s, u) => s + u.widthPx, 0);
+                      const width = units.slice(segStart, segEnd + 1).reduce((s, u) => s + u.widthPx, 0);
+
+                      const style: CSSProperties = {
+                        left,
+                        width: Math.max(width - 3, 4),
+                        background: project ? project.color : 'repeating-linear-gradient(45deg, var(--color-neutral-400), var(--color-neutral-400) 4px, var(--color-neutral-200) 4px, var(--color-neutral-200) 8px)',
+                      };
+
+                      return (
+                        <button
+                          key={`${booking.id}-${segIdx}`}
+                          type="button"
+                          className={`pdc-bar${hasConflict ? ' is-conflict' : ''}`}
+                          style={style}
+                          onClick={(e) => onBookingClick(booking, e)}
+                          title={label}
+                        >
+                          {segIdx === 0 && <span className="pdc-bar-label">{label}</span>}
+                        </button>
+                      );
+                    });
                   })}
                 </div>
               );
