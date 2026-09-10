@@ -3,12 +3,16 @@ import { formatFullDate, fromISODate } from '../../lib/dates';
 import type { Booking, Person, Project } from '../../types';
 import { ProjectResourceGrid } from './ProjectResourceGrid';
 import { computeConflictDays, peopleForProject, projectDateRange } from './calc';
-import { buildUnits, groupByMonth, shiftAnchor, unitRangeForDates } from './timeUnits';
+import { buildUnits, groupByMonth, shiftAnchor, unitRangeForDates, type TimeUnit } from './timeUnits';
 
 interface PlanDeProductionProps {
   people: Person[];
   projects: Project[];
   bookings: Booking[];
+}
+
+function pxBefore(units: TimeUnit[], idx: number): number {
+  return units.slice(0, idx).reduce((sum, u) => sum + u.widthPx, 0);
 }
 
 export function PlanDeProduction({ people, projects, bookings }: PlanDeProductionProps) {
@@ -20,23 +24,15 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const conflictsByPerson = useMemo(() => computeConflictDays(bookings), [bookings]);
 
-  // Every position below (month ticks, project bars, today marker) is a
-  // percentage of this SAME `units` array that the expanded per-project
-  // grids use — so the overview and the expanded grids always agree on
-  // which year is showing, and navigating years moves both together.
-  const monthTicks = useMemo(() => {
-    const groups = groupByMonth(units);
-    let cursor = 0;
-    return groups.map((g) => {
-      const pct = (cursor / units.length) * 100;
-      cursor += g.span;
-      return { label: g.label, pct };
-    });
-  }, [units]);
-
-  const todayPct = useMemo(() => {
+  // The overview below uses the exact same fixed per-week pixel width as the
+  // expanded per-project grids (CalendarGrid) — not a percentage of the
+  // available space — so the two line up column-for-column instead of each
+  // scaling to a different width.
+  const trackWidth = useMemo(() => units.reduce((sum, u) => sum + u.widthPx, 0), [units]);
+  const monthGroups = useMemo(() => groupByMonth(units), [units]);
+  const todayLeft = useMemo(() => {
     const idx = units.findIndex((u) => u.isToday);
-    return idx === -1 ? null : (idx / units.length) * 100;
+    return idx === -1 ? null : pxBefore(units, idx);
   }, [units]);
 
   const toggle = (projectId: string) => {
@@ -79,17 +75,17 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
         <p className="text-muted">Aucun projet pour l'instant.</p>
       ) : (
         <div className="ppr-project-list">
-          <div className="ppr-project-row ppr-timeline-header">
-            <div className="ppr-chevron-spacer" />
-            <span className="pdc-color-dot" style={{ visibility: 'hidden' }} />
-            <div className="ppr-project-info" />
-            <div className="ppr-sparkline-track ppr-ticks-track">
-              {todayPct !== null && <div className="ppr-sparkline-today" style={{ left: `${todayPct}%` }} />}
-              {monthTicks.map((tick) => (
-                <div key={tick.label} className="ppr-tick" style={{ left: `${tick.pct}%` }}>
-                  {tick.label}
-                </div>
-              ))}
+          <div className="ppr-overview-row ppr-timeline-header">
+            <div className="ppr-label-col" />
+            <div className="ppr-track" style={{ width: trackWidth }}>
+              <div className="pdc-month-band">
+                {monthGroups.map((group, i) => (
+                  <div key={i} className="pdc-month-cell" style={{ width: group.span * units[0].widthPx }}>
+                    {group.label}
+                  </div>
+                ))}
+              </div>
+              {todayLeft !== null && <div className="ppr-sparkline-today" style={{ left: todayLeft }} />}
             </div>
           </div>
 
@@ -99,37 +95,39 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
             const isExpanded = expanded.has(project.id);
             const visibleRange = range ? unitRangeForDates(units, range.start, range.end) : null;
 
-            let leftPct = 0;
-            let widthPct = 0;
+            let barLeft = 0;
+            let barWidth = 0;
             if (visibleRange) {
               const [startIdx, endIdx] = visibleRange;
-              leftPct = (startIdx / units.length) * 100;
-              widthPct = Math.max(((endIdx - startIdx + 1) / units.length) * 100, 1.5);
+              barLeft = pxBefore(units, startIdx);
+              barWidth = Math.max(pxBefore(units, endIdx + 1) - barLeft - 2, 6);
             }
 
             return (
               <div className="ppr-project-section" key={project.id}>
-                <div className="ppr-project-row">
-                  <button
-                    type="button"
-                    className="btn btn-icon btn-ghost ppr-chevron"
-                    onClick={() => toggle(project.id)}
-                    aria-expanded={isExpanded}
-                    aria-label={isExpanded ? 'Réduire' : 'Étendre'}
-                  >
-                    {isExpanded ? '▾' : '▸'}
-                  </button>
-                  <span className="pdc-color-dot" style={{ background: project.color }} />
-                  <div className="ppr-project-info">
-                    <div className="ppr-project-name">{project.name}</div>
-                    <div className="text-muted ppr-project-client">{project.client}</div>
+                <div className="ppr-overview-row">
+                  <div className="ppr-label-col">
+                    <button
+                      type="button"
+                      className="ppr-chevron"
+                      onClick={() => toggle(project.id)}
+                      aria-expanded={isExpanded}
+                      aria-label={isExpanded ? 'Réduire' : 'Étendre'}
+                    >
+                      {isExpanded ? '▾' : '▸'}
+                    </button>
+                    <span className="pdc-color-dot" style={{ background: project.color }} />
+                    <div className="ppr-project-info">
+                      <div className="ppr-project-name">{project.name}</div>
+                      <div className="text-muted ppr-project-client">{project.client}</div>
+                    </div>
                   </div>
-                  <div className="ppr-sparkline-track">
-                    {todayPct !== null && <div className="ppr-sparkline-today" style={{ left: `${todayPct}%` }} />}
+                  <div className="ppr-track ppr-bar-track" style={{ width: trackWidth }}>
+                    {todayLeft !== null && <div className="ppr-sparkline-today" style={{ left: todayLeft }} />}
                     {visibleRange && range ? (
                       <div
                         className="ppr-sparkline-bar"
-                        style={{ left: `${leftPct}%`, width: `${widthPct}%`, background: project.color }}
+                        style={{ left: barLeft, width: barWidth, background: project.color }}
                         title={`${formatFullDate(fromISODate(range.start))} → ${formatFullDate(fromISODate(range.end))}`}
                       >
                         <span className="ppr-sparkline-label">{project.name}</span>
