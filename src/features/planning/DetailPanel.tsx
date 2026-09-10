@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { addDays, fromISODate, toISODate } from '../../lib/dates';
 import { ABSENCE_LABELS, type Booking, type DayHalf, type Person, type Project } from '../../types';
 import { coveredHalves } from './calc';
+import { usePopoverPosition } from './usePopoverPosition';
 
 interface DetailPanelProps {
   x: number;
@@ -40,8 +41,10 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
   const days = invalidRange ? 0 : durationDays(startDate, endDate, startHalf, endHalf);
   const cost = person ? days * person.dailyRate : 0;
 
+  const { ref, style } = usePopoverPosition(x, y);
+
   return (
-    <div className="pdc-popover card elev-lg" style={{ left: x, top: y }}>
+    <div ref={ref} className="pdc-popover card elev-lg" style={style}>
       <div className="pdc-detail-title">{person?.name ?? 'Ressource inconnue'}</div>
       <div className="pdc-detail-row">
         <span className="text-muted">Sur</span>

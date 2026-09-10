@@ -1,4 +1,5 @@
 import { ABSENCE_LABELS, type AbsenceType, type Project } from '../../types';
+import { usePopoverPosition } from './usePopoverPosition';
 
 interface BookingPopoverProps {
   x: number;
@@ -11,8 +12,10 @@ interface BookingPopoverProps {
 const ABSENCE_TYPES: AbsenceType[] = ['conge', 'teletravail', 'maladie'];
 
 export function BookingPopover({ x, y, projects, onSelectProject, onSelectAbsence }: BookingPopoverProps) {
+  const { ref, style } = usePopoverPosition(x, y);
+
   return (
-    <div className="pdc-popover card elev-lg" style={{ left: x, top: y }}>
+    <div ref={ref} className="pdc-popover card elev-lg" style={style}>
       <div className="pdc-popover-kicker">Projets</div>
       {projects.map((project) => (
         <button key={project.id} type="button" className="pdc-popover-option" onClick={() => onSelectProject(project.id)}>
