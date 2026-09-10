@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { addDays, fromISODate, toISODate } from '../../lib/dates';
-import { ABSENCE_LABELS, type Booking, type DayHalf, type Person, type Project } from '../../types';
-import { coveredHalves } from './calc';
+import type { Booking, DayHalf, Person, Project } from '../../types';
+import { bookingLabel, coveredHalves } from './calc';
 import { usePopoverPosition } from './usePopoverPosition';
 
 interface DetailPanelProps {
@@ -48,7 +48,7 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
       <div className="pdc-detail-title">{person?.name ?? 'Ressource inconnue'}</div>
       <div className="pdc-detail-row">
         <span className="text-muted">Sur</span>
-        <span>{project ? project.name : ABSENCE_LABELS[booking.absenceType!]}</span>
+        <span>{bookingLabel(booking, project)}</span>
       </div>
 
       <div className="field">

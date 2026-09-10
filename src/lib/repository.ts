@@ -70,6 +70,18 @@ export async function deletePerson(id: string) {
   await deleteDoc(doc(db, 'people', id));
 }
 
+export async function createProject(project: Omit<Project, 'id'>) {
+  await addDoc(collection(db, 'projects'), project);
+}
+
+export async function updateProject(id: string, changes: Omit<Project, 'id'>) {
+  await updateDoc(doc(db, 'projects', id), changes);
+}
+
+export async function deleteProject(id: string) {
+  await deleteDoc(doc(db, 'projects', id));
+}
+
 export async function approveRequest(request: AbsenceRequest) {
   const batch = writeBatch(db);
   const bookingRef = doc(collection(db, 'bookings'));

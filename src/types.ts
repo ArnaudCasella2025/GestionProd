@@ -44,9 +44,11 @@ export type ProjectStatus = 'sous_controle' | 'tendu' | 'depassement';
 export interface Project {
   id: string;
   name: string;
+  /** Name of the funder/client. */
   client: string;
   color: string;
   budget: number;
+  description?: string;
 }
 
 export type DayHalf = 'AM' | 'PM';

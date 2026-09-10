@@ -4,6 +4,7 @@ import { Equipe } from './Equipe';
 import { NavRail, type PlanningView } from './NavRail';
 import { PlanDeCharge } from './PlanDeCharge';
 import { PlanDeProduction } from './PlanDeProduction';
+import { Projects } from './Projects';
 import { RequestsModal } from './RequestsModal';
 import { Semainier } from './Semainier';
 
@@ -34,6 +35,7 @@ export function PlanningApp() {
       )}
       {view === 'production' && <PlanDeProduction people={people} projects={projects} bookings={bookings} />}
       {view === 'semainier' && <Semainier people={people} projects={projects} bookings={bookings} />}
+      {view === 'projets' && <Projects projects={projects} bookings={bookings} people={people} />}
       {view === 'equipe' && <Equipe people={people} />}
 
       {requestsOpen && (

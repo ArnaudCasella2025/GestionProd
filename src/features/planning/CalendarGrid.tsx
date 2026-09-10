@@ -1,6 +1,6 @@
 import type { CSSProperties, MouseEvent } from 'react';
 import type { Booking, Person, Project } from '../../types';
-import { ABSENCE_LABELS } from '../../types';
+import { bookingLabel } from './calc';
 import { groupByMonth, splitAtWeekends, unitRangeForDates, type TimeUnit } from './timeUnits';
 
 export interface DragSelection {
@@ -116,7 +116,7 @@ export function CalendarGrid({
                     if (!range) return [];
                     const [startIdx, endIdx] = range;
                     const project = booking.projectId ? projectsById.get(booking.projectId) : undefined;
-                    const label = project ? project.name : ABSENCE_LABELS[booking.absenceType!];
+                    const label = bookingLabel(booking, project);
                     const hasConflict =
                       booking.projectId &&
                       conflictDays &&

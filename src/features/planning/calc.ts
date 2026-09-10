@@ -1,8 +1,15 @@
 import { addDays, fromISODate, toISODate } from '../../lib/dates';
-import type { Booking, DayHalf, Person, Project, ProjectStatus } from '../../types';
+import { ABSENCE_LABELS, type Booking, type DayHalf, type Person, type Project, type ProjectStatus } from '../../types';
 
 export function projectBookingsFor(bookings: Booking[], projectId: string): Booking[] {
   return bookings.filter((b) => b.projectId === projectId);
+}
+
+/** What to show for a booking: the project's name, the absence label, or a
+ * fallback if the project it pointed to has since been deleted. */
+export function bookingLabel(booking: Booking, project: Project | undefined): string {
+  if (booking.projectId) return project?.name ?? 'Projet supprimé';
+  return ABSENCE_LABELS[booking.absenceType!];
 }
 
 /** The [earliest start, latest end] of a project's bookings, or null if it has none. */
