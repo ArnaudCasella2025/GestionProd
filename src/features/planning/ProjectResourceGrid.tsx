@@ -7,10 +7,10 @@ import type { TimeUnit } from './timeUnits';
 import { useBookingGrid } from './useBookingGrid';
 
 interface ProjectResourceGridProps {
+  project: Project;
   people: Person[];
   units: TimeUnit[];
   bookings: Booking[];
-  projects: Project[];
   projectsById: Map<string, Project>;
   peopleById: Map<string, Person>;
   conflictsByPerson: Map<string, Set<string>>;
@@ -22,12 +22,17 @@ interface ProjectResourceGridProps {
  * scoped to just the people assigned to this project. It reads and writes
  * the same `bookings` collection, so changes here show up in Plan de charge
  * too, and vice versa.
+ *
+ * New bookings created here are always on `project` — the create popover
+ * only offers it (plus absences), not the full project list, since a
+ * booking created from inside one project's expanded block landing on a
+ * *different* project would be confusing to read back.
  */
 export function ProjectResourceGrid({
+  project,
   people,
   units,
   bookings,
-  projects,
   projectsById,
   peopleById,
   conflictsByPerson,
@@ -69,7 +74,7 @@ export function ProjectResourceGrid({
           <BookingPopover
             x={createPopover.x}
             y={createPopover.y}
-            projects={projects}
+            projects={[project]}
             onSelectProject={(projectId) => applyBooking({ projectId })}
             onSelectAbsence={(absenceType) => applyBooking({ absenceType })}
           />

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { formatFullDate, fromISODate } from '../../lib/dates';
+import { addMonths, formatFullDate, formatMonthShort, fromISODate, startOfMonth, toISODate } from '../../lib/dates';
 import type { Booking, Person, Project } from '../../types';
 import { ProjectResourceGrid } from './ProjectResourceGrid';
 import { computeConflictDays, globalBookingRange, peopleForProject, projectDateRange } from './calc';
@@ -17,6 +17,22 @@ function percentBetween(dateIso: string, rangeStart: string, rangeEnd: string): 
   return ((fromISODate(dateIso).getTime() - fromISODate(rangeStart).getTime()) / total) * 100;
 }
 
+/** Month-start tick positions (as a percentage) across a date range, for the timeline header. */
+function monthTicks(rangeStart: string, rangeEnd: string): { label: string; pct: number }[] {
+  const ticks: { label: string; pct: number }[] = [];
+  let cursor = startOfMonth(fromISODate(rangeStart));
+  const end = fromISODate(rangeEnd);
+  while (cursor <= end) {
+    const iso = toISODate(cursor);
+    ticks.push({
+      label: `${formatMonthShort(cursor)} ${cursor.getFullYear()}`,
+      pct: Math.max(percentBetween(iso, rangeStart, rangeEnd), 0),
+    });
+    cursor = addMonths(cursor, 1);
+  }
+  return ticks;
+}
+
 export function PlanDeProduction({ people, projects, bookings }: PlanDeProductionProps) {
   const [anchor, setAnchor] = useState(() => new Date());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -27,6 +43,7 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
   const conflictsByPerson = useMemo(() => computeConflictDays(bookings), [bookings]);
   const globalRange = useMemo(() => globalBookingRange(bookings), [bookings]);
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const ticks = useMemo(() => (globalRange ? monthTicks(globalRange.start, globalRange.end) : []), [globalRange]);
 
   const toggle = (projectId: string) => {
     setExpanded((prev) => {
@@ -68,6 +85,19 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
         <p className="text-muted">Aucun projet pour l'instant.</p>
       ) : (
         <div className="ppr-project-list">
+          <div className="ppr-project-row ppr-timeline-header">
+            <div className="ppr-chevron-spacer" />
+            <span className="pdc-color-dot" style={{ visibility: 'hidden' }} />
+            <div className="ppr-project-info" />
+            <div className="ppr-sparkline-track ppr-ticks-track">
+              {ticks.map((tick) => (
+                <div key={tick.label} className="ppr-tick" style={{ left: `${tick.pct}%` }}>
+                  {tick.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
           {projects.map((project) => {
             const range = projectDateRange(bookings, project.id);
             const projectPeople = peopleForProject(bookings, people, project.id);
@@ -124,10 +154,10 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
                       <p className="text-muted ppr-expanded-empty">Aucune ressource affectée pour l'instant.</p>
                     ) : (
                       <ProjectResourceGrid
+                        project={project}
                         people={projectPeople}
                         units={units}
                         bookings={bookings}
-                        projects={projects}
                         projectsById={projectsById}
                         peopleById={peopleById}
                         conflictsByPerson={conflictsByPerson}

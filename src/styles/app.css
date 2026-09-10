@@ -535,6 +535,10 @@
   flex: none;
   font-size: 12px;
 }
+.ppr-chevron-spacer {
+  flex: none;
+  width: 36px;
+}
 .ppr-project-info {
   flex: none;
   width: 236px;
@@ -601,4 +605,26 @@
 }
 .ppr-expanded-empty {
   padding: var(--space-2) 0;
+}
+
+.ppr-timeline-header {
+  border-bottom: 1px solid var(--color-divider);
+  padding-bottom: var(--space-1);
+}
+.ppr-ticks-track {
+  position: relative;
+  background: none;
+  height: 20px;
+  overflow: visible;
+}
+.ppr-tick {
+  position: absolute;
+  top: 0;
+  padding-left: 6px;
+  border-left: 1px solid var(--color-divider);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+  white-space: nowrap;
 }
