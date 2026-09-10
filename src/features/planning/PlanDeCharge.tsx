@@ -6,6 +6,7 @@ import {
   deleteBooking,
   refuseRequest,
   seedDemoData,
+  updateBookingDates,
   useBookings,
   usePeople,
   useProjects,
@@ -16,6 +17,7 @@ import type { AbsenceType, Booking, ZoomLevel } from '../../types';
 import { BookingPopover } from './BookingPopover';
 import { CalendarGrid, type DragSelection } from './CalendarGrid';
 import { CommandPalette } from './CommandPalette';
+import { ConflictsModal } from './ConflictsModal';
 import { DetailPanel } from './DetailPanel';
 import { NavRail } from './NavRail';
 import { ProjectCards } from './ProjectCards';
@@ -56,6 +58,7 @@ export function PlanDeCharge() {
   const [createPopover, setCreatePopover] = useState<CreatePopoverState | null>(null);
   const [detailPanel, setDetailPanel] = useState<DetailPanelState | null>(null);
   const [requestsOpen, setRequestsOpen] = useState(false);
+  const [conflictsOpen, setConflictsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
@@ -77,6 +80,7 @@ export function PlanDeCharge() {
     setCreatePopover(null);
     setDetailPanel(null);
     setRequestsOpen(false);
+    setConflictsOpen(false);
     setPaletteOpen(false);
   }, []);
 
@@ -136,6 +140,11 @@ export function PlanDeCharge() {
     setDetailPanel({ x: evt.clientX, y: evt.clientY, booking });
   }, []);
 
+  const handleEditFromConflicts = useCallback((booking: Booking, evt: MouseEvent) => {
+    setConflictsOpen(false);
+    setDetailPanel({ x: evt.clientX, y: evt.clientY, booking });
+  }, []);
+
   const handleGoToPerson = useCallback((personId: string) => {
     const idx = people.findIndex((p) => p.id === personId);
     if (idx === -1) return;
@@ -173,9 +182,13 @@ export function PlanDeCharge() {
           <div className="pdc-status-bar">
             <span>{formatFullDate(new Date())}</span>
             <span>{totalDaysReserved} jours·homme réservés</span>
-            <span className={conflictCount > 0 ? 'pdc-conflict-count' : ''}>
-              {conflictCount} conflit{conflictCount > 1 ? 's' : ''}
-            </span>
+            {conflictCount > 0 ? (
+              <button type="button" className="pdc-conflict-trigger pdc-conflict-count" onClick={() => setConflictsOpen(true)}>
+                {conflictCount} conflit{conflictCount > 1 ? 's' : ''}
+              </button>
+            ) : (
+              <span>0 conflit</span>
+            )}
           </div>
         </header>
 
@@ -263,6 +276,7 @@ export function PlanDeCharge() {
         <>
           <div className="pdc-popover-scrim" onClick={() => setDetailPanel(null)} />
           <DetailPanel
+            key={detailPanel.booking.id}
             x={detailPanel.x}
             y={detailPanel.y}
             booking={detailPanel.booking}
@@ -270,6 +284,10 @@ export function PlanDeCharge() {
             project={detailProject}
             onRelease={() => {
               deleteBooking(detailPanel.booking.id).catch(console.error);
+              setDetailPanel(null);
+            }}
+            onSaveDates={(startDate, endDate) => {
+              updateBookingDates(detailPanel.booking.id, startDate, endDate).catch(console.error);
               setDetailPanel(null);
             }}
           />
@@ -283,6 +301,18 @@ export function PlanDeCharge() {
           onApprove={(request) => approveRequest(request).catch(console.error)}
           onRefuse={(id) => refuseRequest(id).catch(console.error)}
           onClose={() => setRequestsOpen(false)}
+        />
+      )}
+
+      {conflictsOpen && (
+        <ConflictsModal
+          conflictsByPerson={conflictsByPerson}
+          bookings={bookings}
+          peopleById={peopleById}
+          projectsById={projectsById}
+          onEditBooking={handleEditFromConflicts}
+          onRelease={(id) => deleteBooking(id).catch(console.error)}
+          onClose={() => setConflictsOpen(false)}
         />
       )}
 

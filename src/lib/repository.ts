@@ -48,6 +48,10 @@ export async function deleteBooking(id: string) {
   await deleteDoc(doc(db, 'bookings', id));
 }
 
+export async function updateBookingDates(id: string, startDate: string, endDate: string) {
+  await updateDoc(doc(db, 'bookings', id), { startDate, endDate });
+}
+
 export async function approveRequest(request: AbsenceRequest) {
   const batch = writeBatch(db);
   const bookingRef = doc(collection(db, 'bookings'));

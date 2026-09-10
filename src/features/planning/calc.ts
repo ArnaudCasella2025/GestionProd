@@ -80,6 +80,19 @@ export function computeConflictDays(bookings: Booking[]): Map<string, Set<string
   return conflictsByPerson;
 }
 
+/** The project bookings of a person that touch at least one of their conflict days. */
+export function conflictingBookingsForPerson(personId: string, bookings: Booking[], conflictDays: Set<string>): Booking[] {
+  return bookings.filter((b) => {
+    if (b.personId !== personId || !b.projectId) return false;
+    const start = fromISODate(b.startDate);
+    const end = fromISODate(b.endDate);
+    for (let d = start; d <= end; d = addDays(d, 1)) {
+      if (conflictDays.has(toISODate(d))) return true;
+    }
+    return false;
+  });
+}
+
 export function totalPersonDaysReserved(bookings: Booking[]): number {
   let total = 0;
   for (const booking of bookings) {

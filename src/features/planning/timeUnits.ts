@@ -3,7 +3,6 @@ import {
   addMonths,
   eachDay,
   formatDayLabel,
-  formatMonthShort,
   isSameDay,
   isWeekend,
   startOfMonth,
@@ -25,7 +24,7 @@ export interface TimeUnit {
   widthPx: number;
 }
 
-const WIDTH: Record<ZoomLevel, number> = { semaine: 44, mois: 30, annee: 96 };
+const WIDTH: Record<ZoomLevel, number> = { semaine: 64, mois: 30, annee: 22 };
 
 export function unitWidth(zoom: ZoomLevel): number {
   return WIDTH[zoom];
@@ -35,26 +34,31 @@ export function buildUnits(anchor: Date, zoom: ZoomLevel): TimeUnit[] {
   const today = new Date();
 
   if (zoom === 'annee') {
-    const yearStart = startOfYear(anchor);
-    return Array.from({ length: 12 }, (_, i) => {
-      const monthStart = addMonths(yearStart, i);
-      const monthEnd = addDays(addMonths(monthStart, 1), -1);
-      return {
-        key: toISODate(monthStart),
-        label: formatMonthShort(monthStart),
-        startIso: toISODate(monthStart),
-        endIso: toISODate(monthEnd),
-        monthGroupLabel: String(monthStart.getFullYear()),
-        isToday: today >= monthStart && today <= monthEnd,
+    // One column per week (not per month) so a drag-select can book a
+    // precise week range even while zoomed out to the year overview.
+    const yearEnd = new Date(anchor.getFullYear(), 11, 31);
+    const units: TimeUnit[] = [];
+    let weekStart = startOfWeek(startOfYear(anchor));
+    while (weekStart <= yearEnd) {
+      const weekEnd = addDays(weekStart, 6);
+      units.push({
+        key: toISODate(weekStart),
+        label: String(weekStart.getDate()),
+        startIso: toISODate(weekStart),
+        endIso: toISODate(weekEnd),
+        monthGroupLabel: weekStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+        isToday: today >= weekStart && today <= weekEnd,
         isWeekend: false,
         widthPx: WIDTH.annee,
-      };
-    });
+      });
+      weekStart = addDays(weekStart, 7);
+    }
+    return units;
   }
 
   const days =
     zoom === 'semaine'
-      ? eachDay(startOfWeek(anchor), 14)
+      ? eachDay(startOfWeek(anchor), 7)
       : eachDay(startOfMonth(anchor), new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate());
 
   return days.map((day) => ({
@@ -70,7 +74,7 @@ export function buildUnits(anchor: Date, zoom: ZoomLevel): TimeUnit[] {
 }
 
 export function shiftAnchor(anchor: Date, zoom: ZoomLevel, direction: 1 | -1): Date {
-  if (zoom === 'semaine') return addDays(anchor, direction * 14);
+  if (zoom === 'semaine') return addDays(anchor, direction * 7);
   if (zoom === 'mois') return addMonths(anchor, direction);
   return new Date(anchor.getFullYear() + direction, anchor.getMonth(), 1);
 }
