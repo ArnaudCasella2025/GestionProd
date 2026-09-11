@@ -629,3 +629,90 @@
 .ppr-timeline-header {
   border-bottom: 1px solid var(--color-divider);
 }
+
+/* — timesheets — */
+.ts-alert {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ts-alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.ts-missing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-top: var(--space-1);
+  border-top: 1px solid color-mix(in srgb, var(--color-accent-2-800) 20%, transparent);
+}
+.ts-missing-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.ts-week {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-divider);
+}
+.ts-day-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+.ts-day-incomplete {
+  background: var(--color-accent-2-100);
+  border-left: 3px solid var(--color-accent-2);
+  padding-left: var(--space-2);
+}
+.ts-day-label {
+  flex: none;
+  width: 200px;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 14px;
+  text-transform: capitalize;
+}
+.ts-hour-cells {
+  display: flex;
+  gap: 4px;
+}
+.ts-hour-cell {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-divider);
+  cursor: pointer;
+  padding: 0;
+}
+.ts-hour-empty {
+  background: var(--color-neutral-100);
+}
+.ts-hour-empty:hover {
+  background: var(--color-neutral-200);
+}
+.ts-day-total {
+  flex: none;
+  margin-left: auto;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+}
+
+.ts-team-table th,
+.ts-team-table td {
+  white-space: nowrap;
+}
+.ts-cell-missing {
+  background: var(--color-accent-2-100);
+  color: var(--color-accent-2-800);
+  font-weight: var(--font-heading-weight);
+}

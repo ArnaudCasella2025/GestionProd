@@ -1,5 +1,13 @@
 import { useMemo, useState } from 'react';
-import { approveRequest, refuseRequest, useBookings, usePeople, useProjects, useRequests } from '../../lib/repository';
+import {
+  approveRequest,
+  refuseRequest,
+  useBookings,
+  usePeople,
+  useProjects,
+  useRequests,
+  useTimesheets,
+} from '../../lib/repository';
 import { Equipe } from './Equipe';
 import { NavRail, type PlanningView } from './NavRail';
 import { PlanDeCharge } from './PlanDeCharge';
@@ -7,12 +15,14 @@ import { PlanDeProduction } from './PlanDeProduction';
 import { Projects } from './Projects';
 import { RequestsModal } from './RequestsModal';
 import { Semainier } from './Semainier';
+import { Timesheets } from './Timesheets';
 
 export function PlanningApp() {
   const { data: people, loading: peopleLoading } = usePeople();
   const { data: projects } = useProjects();
   const { data: bookings } = useBookings();
   const { data: requests } = useRequests();
+  const { data: timesheets } = useTimesheets();
 
   const [view, setView] = useState<PlanningView>('charge');
   const [requestsOpen, setRequestsOpen] = useState(false);
@@ -35,6 +45,7 @@ export function PlanningApp() {
       )}
       {view === 'production' && <PlanDeProduction people={people} projects={projects} bookings={bookings} />}
       {view === 'semainier' && <Semainier people={people} projects={projects} bookings={bookings} />}
+      {view === 'timesheets' && <Timesheets people={people} projects={projects} timesheets={timesheets} />}
       {view === 'projets' && <Projects projects={projects} bookings={bookings} people={people} />}
       {view === 'equipe' && <Equipe people={people} />}
 

@@ -82,3 +82,21 @@ export interface AbsenceRequest {
 }
 
 export type ZoomLevel = 'semaine' | 'mois' | 'annee';
+
+/** A work day is split into this many hourly slots to declare on a timesheet. */
+export const HOURS_PER_DAY = 7;
+
+/** What one declared hour was spent on — a project, or an absence type. */
+export interface TimesheetHourSlot {
+  projectId?: string;
+  absenceType?: AbsenceType;
+}
+
+/** One person's timesheet for one day: HOURS_PER_DAY slots, null where undeclared. */
+export interface TimesheetDay {
+  id: string;
+  personId: string;
+  /** ISO date (YYYY-MM-DD). */
+  date: string;
+  hours: (TimesheetHourSlot | null)[];
+}

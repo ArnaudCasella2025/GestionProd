@@ -1,6 +1,6 @@
 import type { Project } from '../../types';
 
-export type PlanningView = 'charge' | 'production' | 'semainier' | 'projets' | 'equipe';
+export type PlanningView = 'charge' | 'production' | 'semainier' | 'timesheets' | 'projets' | 'equipe';
 
 interface NavRailProps {
   projects: Project[];
@@ -14,11 +14,10 @@ const SECTIONS: { label: string; view: PlanningView }[] = [
   { label: 'Plan de charge', view: 'charge' },
   { label: 'Plan de production', view: 'production' },
   { label: 'Semainier', view: 'semainier' },
+  { label: 'Timesheets', view: 'timesheets' },
   { label: 'Projets', view: 'projets' },
   { label: 'Équipe', view: 'equipe' },
 ];
-
-const SOON_SECTIONS = ['Timesheets'];
 
 export function NavRail({ projects, pendingRequestCount, onOpenRequests, activeView, onNavigate }: NavRailProps) {
   return (
@@ -44,14 +43,6 @@ export function NavRail({ projects, pendingRequestCount, onOpenRequests, activeV
               }}
             >
               {section.label}
-            </a>
-          </li>
-        ))}
-        {SOON_SECTIONS.map((label) => (
-          <li key={label}>
-            <a href="#" onClick={(e) => e.preventDefault()}>
-              {label}
-              <span className="pdc-soon">bientôt</span>
             </a>
           </li>
         ))}

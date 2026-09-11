@@ -5,12 +5,13 @@ import {
   doc,
   onSnapshot,
   query,
+  setDoc,
   updateDoc,
   writeBatch,
 } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from './firebase';
-import type { AbsenceRequest, Booking, DayHalf, Person, Project } from '../types';
+import type { AbsenceRequest, Booking, DayHalf, Person, Project, TimesheetDay, TimesheetHourSlot } from '../types';
 import { DEMO_PEOPLE, DEMO_PROJECTS, DEMO_BOOKINGS, DEMO_REQUESTS } from '../data/demoData';
 
 function useCollectionData<T>(name: string): { data: T[]; loading: boolean } {
@@ -39,6 +40,7 @@ export const usePeople = () => useCollectionData<Person>('people');
 export const useProjects = () => useCollectionData<Project>('projects');
 export const useBookings = () => useCollectionData<Booking>('bookings');
 export const useRequests = () => useCollectionData<AbsenceRequest>('requests');
+export const useTimesheets = () => useCollectionData<TimesheetDay>('timesheets');
 
 export async function createBooking(booking: Omit<Booking, 'id'>) {
   await addDoc(collection(db, 'bookings'), booking);
@@ -80,6 +82,11 @@ export async function updateProject(id: string, changes: Omit<Project, 'id'>) {
 
 export async function deleteProject(id: string) {
   await deleteDoc(doc(db, 'projects', id));
+}
+
+/** Overwrites a person's whole day of declared hours (one doc per person per day). */
+export async function setTimesheetDay(personId: string, date: string, hours: (TimesheetHourSlot | null)[]) {
+  await setDoc(doc(db, 'timesheets', `${personId}_${date}`), { personId, date, hours });
 }
 
 export async function approveRequest(request: AbsenceRequest) {
