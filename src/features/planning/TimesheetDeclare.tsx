@@ -154,7 +154,8 @@ export function TimesheetDeclare({ people, projects, timesheets }: TimesheetDecl
                 <div className="ts-hour-cells">
                   {hours.map((slot, hourIndex) => {
                     const hour = TIMESHEET_HOURS[hourIndex];
-                    const overtime = isOvertimeHour(hour);
+                    // A weekend has no office hours at all — every hour on it counts as extra time.
+                    const overtime = weekend || isOvertimeHour(hour);
                     const project = slot?.projectId ? projectsById.get(slot.projectId) : undefined;
                     const activity = slot
                       ? slot.projectId

@@ -665,6 +665,10 @@
 :root {
   --ts-office-accent: #b7791f;
   --ts-office-tint: #fbf0dc;
+  /* No green exists in the two-accent Broadsheet palette — needed here to mark
+     a fully-declared (7h) day on the team timesheet matrix. */
+  --ts-success: #1f7a43;
+  --ts-success-tint: #e6f4ea;
 }
 
 .ts-week {
@@ -756,9 +760,17 @@
 }
 .ts-team-subrow td {
   font-size: 13px;
-  color: color-mix(in srgb, var(--color-text) 70%, transparent);
 }
-.ts-cell-missing {
+.ts-cell-under {
+  background: var(--color-neutral-200);
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+.ts-cell-complete {
+  background: var(--ts-success-tint);
+  color: var(--ts-success);
+  font-weight: var(--font-heading-weight);
+}
+.ts-cell-alert {
   background: var(--color-accent-2-100);
   color: var(--color-accent-2-800);
   font-weight: var(--font-heading-weight);

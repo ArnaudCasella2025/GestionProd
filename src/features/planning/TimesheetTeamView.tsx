@@ -18,6 +18,15 @@ interface ActivityRow {
 
 const ALL = '__all__';
 
+/** Green on exactly 7h, grey below, red above 7h or on a non-worked day (weekend for now —
+ * this app has no public-holiday calendar yet). */
+function cellClass(count: number, day: Date): string {
+  if (isWeekend(day)) return 'ts-cell-alert';
+  if (count > HOURS_PER_DAY) return 'ts-cell-alert';
+  if (count === HOURS_PER_DAY) return 'ts-cell-complete';
+  return 'ts-cell-under';
+}
+
 export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTeamViewProps) {
   const [anchor, setAnchor] = useState(() => new Date());
   const [personFilter, setPersonFilter] = useState(ALL);
@@ -27,11 +36,7 @@ export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTea
 
   const monthStart = startOfMonth(anchor);
   const daysInMonth = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate();
-  const weekdays = useMemo(
-    () => eachDay(monthStart, daysInMonth).filter((d) => !isWeekend(d)),
-    [monthStart, daysInMonth],
-  );
-  const todayIso = toISODate(new Date());
+  const monthDays = useMemo(() => eachDay(monthStart, daysInMonth), [monthStart, daysInMonth]);
 
   const byPersonDate = useMemo(() => {
     const map = new Map<string, TimesheetDay>();
@@ -41,7 +46,7 @@ export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTea
 
   // Per person, hours declared each day broken down by which project/absence they went to.
   const activityRowsByPerson = useMemo(() => {
-    const monthDates = new Set(weekdays.map((d) => toISODate(d)));
+    const monthDates = new Set(monthDays.map((d) => toISODate(d)));
     const byPerson = new Map<string, Map<string, ActivityRow>>();
     for (const t of timesheets) {
       if (!monthDates.has(t.date)) continue;
@@ -72,7 +77,7 @@ export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTea
       result.set(personId, [...activities.values()].sort((a, b) => a.label.localeCompare(b.label)));
     }
     return result;
-  }, [timesheets, weekdays, projectsById]);
+  }, [timesheets, monthDays, projectsById]);
 
   const visiblePeople = personFilter === ALL ? people : people.filter((p) => p.id === personFilter);
 
@@ -93,7 +98,9 @@ export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTea
             {monthStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
           </span>
         </div>
-        <span className="text-muted pdc-toolbar-hint">Les heures manquantes sur les jours passés sont en rouge</span>
+        <span className="text-muted pdc-toolbar-hint">
+          Vert = 7h déclarées · Gris = incomplet · Rouge = heures sup. ou jour non travaillé
+        </span>
       </div>
 
       <div className="pdc-toolbar">
@@ -127,7 +134,7 @@ export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTea
             <thead>
               <tr>
                 <th>Ressource / Projet</th>
-                {weekdays.map((d) => (
+                {monthDays.map((d) => (
                   <th key={toISODate(d)} style={{ textAlign: 'center' }}>
                     {d.getDate()}
                   </th>
@@ -150,12 +157,12 @@ export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTea
                         {!row.color && <span className="pdc-color-dot pdc-color-dot-hatch" style={{ marginRight: 6 }} />}
                         {person.name} — {row.label}
                       </td>
-                      {weekdays.map((d) => {
+                      {monthDays.map((d) => {
                         const iso = toISODate(d);
                         const count = row.perDate.get(iso) ?? 0;
                         return (
-                          <td key={iso} style={{ textAlign: 'center' }}>
-                            {count}/{HOURS_PER_DAY}
+                          <td key={iso} className={cellClass(count, d)} style={{ textAlign: 'center' }}>
+                            {count}
                           </td>
                         );
                       })}
@@ -167,15 +174,12 @@ export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTea
                   <Fragment key={person.id}>
                     <tr>
                       <td style={{ whiteSpace: 'nowrap', fontWeight: 'var(--font-heading-weight)' }}>{person.name}</td>
-                      {weekdays.map((d) => {
+                      {monthDays.map((d) => {
                         const iso = toISODate(d);
-                        const day = byPersonDate.get(`${person.id}__${iso}`);
-                        const declared = declaredHoursCount(day);
-                        const isPast = iso < todayIso;
-                        const incomplete = isPast && declared < HOURS_PER_DAY;
+                        const declared = declaredHoursCount(byPersonDate.get(`${person.id}__${iso}`));
                         return (
-                          <td key={iso} className={incomplete ? 'ts-cell-missing' : undefined} style={{ textAlign: 'center' }}>
-                            {declared}/{HOURS_PER_DAY}
+                          <td key={iso} className={cellClass(declared, d)} style={{ textAlign: 'center' }}>
+                            {declared}
                           </td>
                         );
                       })}
@@ -187,12 +191,12 @@ export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTea
                           {!row.color && <span className="pdc-color-dot pdc-color-dot-hatch" style={{ marginRight: 6 }} />}
                           {row.label}
                         </td>
-                        {weekdays.map((d) => {
+                        {monthDays.map((d) => {
                           const iso = toISODate(d);
                           const count = row.perDate.get(iso) ?? 0;
                           return (
-                            <td key={iso} style={{ textAlign: 'center' }}>
-                              {count}/{HOURS_PER_DAY}
+                            <td key={iso} className={cellClass(count, d)} style={{ textAlign: 'center' }}>
+                              {count}
                             </td>
                           );
                         })}
