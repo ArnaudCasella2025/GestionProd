@@ -57,7 +57,8 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
 
   function formatCell(days: number): string {
     if (days === 0) return '—';
-    return toDisplayNumber(days).toLocaleString('fr-FR');
+    const value = toDisplayNumber(days).toLocaleString('fr-FR');
+    return unit === 'euro' ? `${value} €` : value;
   }
 
   function startEdit(projectId: string, month: number) {
@@ -205,7 +206,11 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
                 <td>Total déclaré</td>
                 {projects.map((project) => {
                   const total = MONTHS.reduce((sum, month) => sum + daysFor(project.id, month), 0);
-                  return <td key={project.id}>{formatCell(total)}</td>;
+                  return (
+                    <td key={project.id} style={{ textAlign: 'center' }}>
+                      {formatCell(total)}
+                    </td>
+                  );
                 })}
               </tr>
             </tbody>
