@@ -1,5 +1,6 @@
 import { addDays, fromISODate, toISODate } from '../../lib/dates';
 import { ABSENCE_LABELS, type Booking, type DayHalf, type Person, type Project, type ProjectStatus } from '../../types';
+import { dailyRateOn } from './salaryCalc';
 
 export function projectBookingsFor(bookings: Booking[], projectId: string): Booking[] {
   return bookings.filter((b) => b.projectId === projectId);
@@ -84,7 +85,7 @@ function sumDailyCost(booking: Booking, person: Person | undefined, dayFilter: (
   let total = 0;
   for (let d = start; d <= end; d = addDays(d, 1)) {
     const iso = toISODate(d);
-    if (dayFilter(iso)) total += person.dailyRate * dayFraction(booking, iso);
+    if (dayFilter(iso)) total += dailyRateOn(person.salaryHistory, iso, person.dailyRate) * dayFraction(booking, iso);
   }
   return total;
 }

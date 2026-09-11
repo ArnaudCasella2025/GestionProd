@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { toISODate } from '../../lib/dates';
 import { deleteAllocationOverride, setAllocationOverride } from '../../lib/repository';
 import type { AllocationOverride, Booking, Person, Project, TimesheetDay } from '../../types';
-import { bookedDaysInMonth, realDaysInMonth } from './allocationCalc';
+import { bookedCostInMonth, bookedDaysInMonth, realCostInMonth, realDaysInMonth } from './allocationCalc';
 
 interface PermanentAllocationsProps {
   people: Person[];
@@ -73,20 +73,35 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
     return override ? override.days : bookedDaysInMonth(relevant, year, month);
   }
 
-  function toDisplayNumber(days: number): number {
-    return unit === 'euro' ? Math.round(days * (person?.dailyRate ?? 0)) : Math.round(days * 10) / 10;
+  /** The value to display/total for a cell, in the current unit. In euros this
+   * uses the salary in effect on each individual day, not a single flat rate
+   * for the whole month — so a mid-month raise is reflected correctly. */
+  function cellAmount(projectId: string, month: number): number {
+    if (unit === 'jours') return daysFor(projectId, month);
+    const fallbackRate = person?.dailyRate ?? 0;
+    const relevant = personBookings.filter((b) => b.projectId === projectId);
+    if (mode === 'reel') {
+      return realCostInMonth(relevant, personTimesheets, projectId, year, month, todayIso, person?.salaryHistory, fallbackRate);
+    }
+    const override = overrideByKey.get(`${projectId}__${month}`);
+    // A manual override has no date to look a rate up for — use today's rate.
+    if (override) return override.days * fallbackRate;
+    return bookedCostInMonth(relevant, year, month, person?.salaryHistory, fallbackRate);
   }
 
-  function formatCell(days: number): string {
-    if (days === 0) return '—';
-    const value = toDisplayNumber(days).toLocaleString('fr-FR');
+  function formatCell(amount: number): string {
+    if (amount === 0) return '—';
+    const rounded = unit === 'euro' ? Math.round(amount) : Math.round(amount * 10) / 10;
+    const value = rounded.toLocaleString('fr-FR');
     return unit === 'euro' ? `${value} €` : value;
   }
 
   function startEdit(projectId: string, month: number) {
     if (mode !== 'officiel') return;
     const days = daysFor(projectId, month);
-    setDraft(days === 0 ? '' : String(toDisplayNumber(days)));
+    const fallbackRate = person?.dailyRate ?? 0;
+    const draftValue = unit === 'euro' ? Math.round(days * fallbackRate) : Math.round(days * 10) / 10;
+    setDraft(days === 0 ? '' : String(draftValue));
     setEditingCell({ projectId, month });
   }
 
@@ -200,7 +215,7 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
                   </td>
                   {projects.map((project) => {
                     const isEditing = editingCell?.projectId === project.id && editingCell.month === month;
-                    const days = daysFor(project.id, month);
+                    const amount = cellAmount(project.id, month);
                     const hasOverride = mode === 'officiel' && overrideByKey.has(`${project.id}__${month}`);
 
                     return (
@@ -225,7 +240,7 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
                             onClick={() => startEdit(project.id, month)}
                             title={mode === 'officiel' ? "Cliquez pour modifier — laissez vide pour revenir au calcul automatique" : undefined}
                           >
-                            {formatCell(days)}
+                            {formatCell(amount)}
                           </button>
                         )}
                       </td>
@@ -237,7 +252,7 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
               <tr className="pa-total-row">
                 <td>Total déclaré</td>
                 {projects.map((project) => {
-                  const total = MONTHS.reduce((sum, month) => sum + daysFor(project.id, month), 0);
+                  const total = MONTHS.reduce((sum, month) => sum + cellAmount(project.id, month), 0);
                   return (
                     <td key={project.id} style={{ textAlign: 'center' }}>
                       {formatCell(total)}
