@@ -9,7 +9,7 @@ import {
   type Person,
   type SalaryRecord,
 } from '../../types';
-import { chargeAmount, dailyRateFor, dailyRateOn } from './salaryCalc';
+import { chargeAmount, dailyRateFor, dailyRateOn, recordEffectiveOn } from './salaryCalc';
 
 interface TeamMemberModalProps {
   /** Present when editing an existing member; absent when creating a new one. */
@@ -43,7 +43,10 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
 
   const todayIso = toISODate(new Date());
   const hasSalaryHistory = salaryHistory.length > 0;
-  const computedRate = hasSalaryHistory ? dailyRateOn(salaryHistory, todayIso, 0) : null;
+  // Falls back to the person's last known rate if every salary record is dated
+  // in the future (nothing is effective yet as of today).
+  const computedRate = hasSalaryHistory ? dailyRateOn(salaryHistory, todayIso, initial?.dailyRate ?? 0) : null;
+  const hasEffectiveRecord = hasSalaryHistory && recordEffectiveOn(salaryHistory, todayIso) != null;
 
   const rateNumber = computedRate ?? Number(dailyRate);
   const congesNumber = Number(congesPerYear);
@@ -121,7 +124,12 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
         {hasSalaryHistory ? (
           <div className="field">
             <label>Taux journalier moyen (TJM)</label>
-            <div className="tmm-computed-rate">{computedRate!.toLocaleString('fr-FR')} €/j — calculé depuis le salaire ci-dessous</div>
+            <div className={`tmm-computed-rate${hasEffectiveRecord ? '' : ' tmm-computed-rate-pending'}`}>
+              {computedRate!.toLocaleString('fr-FR')} €/j
+              {hasEffectiveRecord
+                ? ' — calculé depuis le salaire ci-dessous'
+                : ' — dernier taux connu (le salaire ci-dessous n\'est pas encore effectif)'}
+            </div>
           </div>
         ) : (
           <div className="field">

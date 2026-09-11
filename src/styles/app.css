@@ -885,6 +885,10 @@
   font-weight: var(--font-heading-weight);
   border-radius: var(--radius-sm);
 }
+.tmm-computed-rate-pending {
+  background: var(--ts-office-tint);
+  color: var(--ts-office-accent);
+}
 .tmm-salary-table {
   font-size: 13px;
   margin-bottom: var(--space-2);
