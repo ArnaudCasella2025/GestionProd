@@ -128,7 +128,7 @@ export function TimesheetDeclare({ people, projects, timesheets }: TimesheetDecl
             <div className="ts-day-label" />
             <div className="ts-hour-cells">
               {TIMESHEET_HOURS.map((hour) => (
-                <div key={hour} className={`ts-hour-head${isOvertimeHour(hour) ? ' ts-hour-head-overtime' : ''}`}>
+                <div key={hour} className={`ts-hour-head${!isOvertimeHour(hour) ? ' ts-hour-head-office' : ''}`}>
                   {hour}h
                 </div>
               ))}
@@ -174,7 +174,7 @@ export function TimesheetDeclare({ people, projects, timesheets }: TimesheetDecl
                       <button
                         key={hourIndex}
                         type="button"
-                        className={`ts-hour-cell${!slot ? ' ts-hour-empty' : ''}${overtime ? ' ts-hour-overtime' : ''}`}
+                        className={`ts-hour-cell${!slot ? ' ts-hour-empty' : ''}${!overtime ? ' ts-hour-office' : ''}`}
                         style={style}
                         title={label}
                         onClick={(e: MouseEvent) => setActiveCell({ date: iso, hourIndex, x: e.clientX, y: e.clientY })}

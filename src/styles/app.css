@@ -657,12 +657,14 @@
   font-size: 13px;
 }
 
-/* A third, ad-hoc semantic color for "outside office hours" — kept apart from
-   the design system's cyan/magenta accents so it never collides with the
-   "missing declaration" alert color used on the same grid. */
+/* A third, ad-hoc semantic color marking the 9h-19h office-hours columns on the
+   timesheet grid — kept apart from the design system's cyan/magenta accents so
+   it never collides with the "missing declaration" alert color used on the
+   same grid. Hours outside that window (early start / evening overtime) stay
+   in the grid's plain neutral tone so the office-hours block reads first. */
 :root {
-  --ts-overtime: #b7791f;
-  --ts-overtime-tint: #fbf0dc;
+  --ts-office-accent: #b7791f;
+  --ts-office-tint: #fbf0dc;
 }
 
 .ts-week {
@@ -684,8 +686,8 @@
   font-size: 10px;
   color: color-mix(in srgb, var(--color-text) 55%, transparent);
 }
-.ts-hour-head-overtime {
-  color: var(--ts-overtime);
+.ts-hour-head-office {
+  color: var(--ts-office-accent);
   font-weight: var(--font-heading-weight);
 }
 .ts-day-row {
@@ -731,15 +733,15 @@
 .ts-hour-empty:hover {
   background: var(--color-neutral-200);
 }
-.ts-hour-overtime {
-  border-color: var(--ts-overtime);
+.ts-hour-office {
+  border-color: var(--ts-office-accent);
   border-width: 2px;
 }
-.ts-hour-empty.ts-hour-overtime {
-  background: var(--ts-overtime-tint);
+.ts-hour-empty.ts-hour-office {
+  background: var(--ts-office-tint);
 }
-.ts-hour-empty.ts-hour-overtime:hover {
-  background: color-mix(in srgb, var(--ts-overtime-tint) 60%, var(--color-neutral-200));
+.ts-hour-empty.ts-hour-office:hover {
+  background: color-mix(in srgb, var(--ts-office-tint) 60%, var(--color-neutral-200));
 }
 .ts-day-total {
   flex: none;
