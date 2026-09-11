@@ -1,10 +1,20 @@
-export type AbsenceType = 'conge' | 'teletravail' | 'maladie';
+export type AbsenceType = 'conge' | 'rtt' | 'teletravail' | 'maladie';
 
 export const ABSENCE_LABELS: Record<AbsenceType, string> = {
   conge: 'Congé',
+  rtt: 'RTT',
   teletravail: 'Télétravail',
   maladie: 'Maladie',
 };
+
+/** Absence types a user can submit through "Mes absences" for director approval.
+ * Télétravail is excluded — it's purely declarative, booked directly with no
+ * approval step. */
+export const REQUESTABLE_ABSENCE_TYPES: AbsenceType[] = ['conge', 'rtt', 'maladie'];
+
+/** Default yearly quotas (in workdays), used when a person has no override set. */
+export const DEFAULT_CONGES_PER_YEAR = 25;
+export const DEFAULT_RTT_PER_YEAR = 11;
 
 export type AccessLevel = 'admin' | 'responsable' | 'user';
 
@@ -37,6 +47,10 @@ export interface Person {
   dailyRate: number;
   /** Access level for future role-based auth — see the Équipe screen's own notice. Defaults to 'user'. */
   accessLevel?: AccessLevel;
+  /** Yearly congés payés quota, in workdays. Defaults to DEFAULT_CONGES_PER_YEAR if unset. */
+  congesPerYear?: number;
+  /** Yearly RTT quota, in workdays. Defaults to DEFAULT_RTT_PER_YEAR if unset. */
+  rttPerYear?: number;
 }
 
 export type ProjectStatus = 'sous_controle' | 'tendu' | 'depassement';
@@ -79,6 +93,14 @@ export interface AbsenceRequest {
   startDate: string;
   endDate: string;
   status: RequestStatus;
+}
+
+/** A single non-working calendar day (e.g. "14 juillet"), entered by an admin. */
+export interface PublicHoliday {
+  id: string;
+  /** ISO date (YYYY-MM-DD). */
+  date: string;
+  label: string;
 }
 
 export type ZoomLevel = 'semaine' | 'mois' | 'annee';

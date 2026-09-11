@@ -1,5 +1,5 @@
 import { addDays, toISODate } from '../lib/dates';
-import type { AbsenceRequest, Booking, Person, Project } from '../types';
+import type { AbsenceRequest, Booking, Person, Project, PublicHoliday } from '../types';
 
 const today = new Date();
 const iso = (offsetDays: number) => toISODate(addDays(today, offsetDays));
@@ -37,6 +37,20 @@ export const DEMO_BOOKINGS: Booking[] = [
 
 export const DEMO_REQUESTS: AbsenceRequest[] = [
   { id: 'r1', personId: 'p2', type: 'conge', startDate: iso(12), endDate: iso(16), status: 'pending' },
-  { id: 'r2', personId: 'p6', type: 'teletravail', startDate: iso(3), endDate: iso(3), status: 'pending' },
+  { id: 'r2', personId: 'p6', type: 'rtt', startDate: iso(3), endDate: iso(3), status: 'pending' },
   { id: 'r3', personId: 'p4', type: 'maladie', startDate: iso(-1), endDate: iso(0), status: 'pending' },
+];
+
+export const DEMO_HOLIDAYS: PublicHoliday[] = [
+  { id: 'h1', date: '2026-01-01', label: "Jour de l'an" },
+  { id: 'h2', date: '2026-04-06', label: 'Lundi de Pâques' },
+  { id: 'h3', date: '2026-05-01', label: 'Fête du Travail' },
+  { id: 'h4', date: '2026-05-08', label: 'Victoire 1945' },
+  { id: 'h5', date: '2026-05-14', label: 'Ascension' },
+  { id: 'h6', date: '2026-05-25', label: 'Lundi de Pentecôte' },
+  { id: 'h7', date: '2026-07-14', label: 'Fête nationale' },
+  { id: 'h8', date: '2026-08-15', label: 'Assomption' },
+  { id: 'h9', date: '2026-11-01', label: 'Toussaint' },
+  { id: 'h10', date: '2026-11-11', label: 'Armistice 1918' },
+  { id: 'h11', date: '2026-12-25', label: 'Noël' },
 ];

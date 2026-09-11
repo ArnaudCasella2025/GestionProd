@@ -836,3 +836,43 @@
   border-top: 2px solid var(--color-divider);
   font-weight: var(--font-heading-weight);
 }
+
+/* — mes absences — */
+.tag-success {
+  background: var(--ts-success-tint);
+  color: var(--ts-success);
+}
+.ma-balances {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.ma-balance-card {
+  padding: var(--space-3) var(--space-4);
+  min-width: 220px;
+}
+.ma-balance-figure {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 24px;
+  margin: var(--space-1) 0;
+}
+.ma-request-form {
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+}
+.ma-request-fields {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+.ma-request-hint {
+  margin: var(--space-2) 0 0;
+  font-size: 13px;
+}
+.ma-request-hint-warning {
+  color: var(--color-accent-2-700);
+  font-weight: var(--font-heading-weight);
+}

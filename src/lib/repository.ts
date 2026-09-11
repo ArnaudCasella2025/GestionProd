@@ -11,8 +11,19 @@ import {
 } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from './firebase';
-import type { AbsenceRequest, AllocationOverride, Booking, DayHalf, Person, Project, TimesheetDay, TimesheetHourSlot } from '../types';
-import { DEMO_PEOPLE, DEMO_PROJECTS, DEMO_BOOKINGS, DEMO_REQUESTS } from '../data/demoData';
+import type {
+  AbsenceRequest,
+  AbsenceType,
+  AllocationOverride,
+  Booking,
+  DayHalf,
+  Person,
+  Project,
+  PublicHoliday,
+  TimesheetDay,
+  TimesheetHourSlot,
+} from '../types';
+import { DEMO_PEOPLE, DEMO_PROJECTS, DEMO_BOOKINGS, DEMO_REQUESTS, DEMO_HOLIDAYS } from '../data/demoData';
 
 function useCollectionData<T>(name: string): { data: T[]; loading: boolean } {
   const [data, setData] = useState<T[]>([]);
@@ -42,6 +53,7 @@ export const useBookings = () => useCollectionData<Booking>('bookings');
 export const useRequests = () => useCollectionData<AbsenceRequest>('requests');
 export const useTimesheets = () => useCollectionData<TimesheetDay>('timesheets');
 export const useAllocationOverrides = () => useCollectionData<AllocationOverride>('allocationOverrides');
+export const usePublicHolidays = () => useCollectionData<PublicHoliday>('publicHolidays');
 
 export async function createBooking(booking: Omit<Booking, 'id'>) {
   await addDoc(collection(db, 'bookings'), booking);
@@ -123,6 +135,24 @@ export async function refuseRequest(id: string) {
   await updateDoc(doc(db, 'requests', id), { status: 'refused' });
 }
 
+export async function createRequest(personId: string, type: AbsenceType, startDate: string, endDate: string) {
+  await addDoc(collection(db, 'requests'), {
+    personId,
+    type,
+    startDate,
+    endDate,
+    status: 'pending',
+  } satisfies Omit<AbsenceRequest, 'id'>);
+}
+
+export async function createPublicHoliday(date: string, label: string) {
+  await addDoc(collection(db, 'publicHolidays'), { date, label } satisfies Omit<PublicHoliday, 'id'>);
+}
+
+export async function deletePublicHoliday(id: string) {
+  await deleteDoc(doc(db, 'publicHolidays', id));
+}
+
 /** Seeds the Firestore database with demo data. Safe to call once on an empty project. */
 export async function seedDemoData() {
   const batch = writeBatch(db);
@@ -141,6 +171,10 @@ export async function seedDemoData() {
   for (const request of DEMO_REQUESTS) {
     const { id, ...rest } = request;
     batch.set(doc(db, 'requests', id), rest);
+  }
+  for (const holiday of DEMO_HOLIDAYS) {
+    const { id, ...rest } = holiday;
+    batch.set(doc(db, 'publicHolidays', id), rest);
   }
   await batch.commit();
 }

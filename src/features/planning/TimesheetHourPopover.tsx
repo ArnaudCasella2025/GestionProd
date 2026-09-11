@@ -11,7 +11,7 @@ interface TimesheetHourPopoverProps {
   onClear: () => void;
 }
 
-const ABSENCE_TYPES: AbsenceType[] = ['conge', 'teletravail', 'maladie'];
+const ABSENCE_TYPES: AbsenceType[] = ['conge', 'rtt', 'teletravail', 'maladie'];
 
 export function TimesheetHourPopover({
   x,

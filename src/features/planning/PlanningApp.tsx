@@ -6,10 +6,12 @@ import {
   useBookings,
   usePeople,
   useProjects,
+  usePublicHolidays,
   useRequests,
   useTimesheets,
 } from '../../lib/repository';
 import { Equipe } from './Equipe';
+import { MyAbsences } from './MyAbsences';
 import { NavRail, type PlanningView } from './NavRail';
 import { PermanentAllocations } from './PermanentAllocations';
 import { PlanDeCharge } from './PlanDeCharge';
@@ -26,6 +28,7 @@ export function PlanningApp() {
   const { data: requests } = useRequests();
   const { data: timesheets } = useTimesheets();
   const { data: allocationOverrides } = useAllocationOverrides();
+  const { data: holidays } = usePublicHolidays();
 
   const [view, setView] = useState<PlanningView>('charge');
   const [requestsOpen, setRequestsOpen] = useState(false);
@@ -58,8 +61,9 @@ export function PlanningApp() {
           allocationOverrides={allocationOverrides}
         />
       )}
+      {view === 'absences' && <MyAbsences people={people} requests={requests} />}
       {view === 'projets' && <Projects projects={projects} bookings={bookings} people={people} />}
-      {view === 'equipe' && <Equipe people={people} />}
+      {view === 'equipe' && <Equipe people={people} holidays={holidays} />}
 
       {requestsOpen && (
         <RequestsModal

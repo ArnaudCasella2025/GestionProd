@@ -9,7 +9,7 @@ interface BookingPopoverProps {
   onSelectAbsence: (type: AbsenceType) => void;
 }
 
-const ABSENCE_TYPES: AbsenceType[] = ['conge', 'teletravail', 'maladie'];
+const ABSENCE_TYPES: AbsenceType[] = ['conge', 'rtt', 'teletravail', 'maladie'];
 
 export function BookingPopover({ x, y, projects, onSelectProject, onSelectAbsence }: BookingPopoverProps) {
   const { ref, style } = usePopoverPosition(x, y);

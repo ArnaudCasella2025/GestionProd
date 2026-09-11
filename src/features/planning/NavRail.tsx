@@ -1,6 +1,14 @@
 import type { Project } from '../../types';
 
-export type PlanningView = 'charge' | 'production' | 'semainier' | 'timesheets' | 'affectation' | 'projets' | 'equipe';
+export type PlanningView =
+  | 'charge'
+  | 'production'
+  | 'semainier'
+  | 'timesheets'
+  | 'affectation'
+  | 'absences'
+  | 'projets'
+  | 'equipe';
 
 interface NavRailProps {
   projects: Project[];
@@ -16,6 +24,7 @@ const SECTIONS: { label: string; view: PlanningView }[] = [
   { label: 'Semainier', view: 'semainier' },
   { label: 'Timesheets', view: 'timesheets' },
   { label: 'Affectation des permanents', view: 'affectation' },
+  { label: 'Mes absences', view: 'absences' },
   { label: 'Projets', view: 'projets' },
   { label: 'Équipe', view: 'equipe' },
 ];
