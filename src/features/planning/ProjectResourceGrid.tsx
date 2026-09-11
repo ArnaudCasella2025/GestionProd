@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { deleteBooking, updateBookingDates } from '../../lib/repository';
+import { deleteBooking, setBookingDayNote, updateBookingDates } from '../../lib/repository';
 import type { Booking, Person, Project } from '../../types';
 import { BookingPopover } from './BookingPopover';
 import { CalendarGrid } from './CalendarGrid';
@@ -104,6 +104,7 @@ export function ProjectResourceGrid({
               updateBookingDates(detailPanel.booking.id, startDate, endDate, startHalf, endHalf).catch(console.error);
               setDetailPanel(null);
             }}
+            onSaveDayNote={(date, note) => setBookingDayNote(detailPanel.booking.id, date, note).catch(console.error)}
           />
         </>
       )}

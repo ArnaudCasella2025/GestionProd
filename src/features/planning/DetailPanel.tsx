@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { addDays, fromISODate, toISODate } from '../../lib/dates';
+import { addDays, formatDayLabel, fromISODate, isWeekend, toISODate } from '../../lib/dates';
 import type { Booking, DayHalf, Person, Project } from '../../types';
 import { bookingLabel, coveredHalves } from './calc';
 import { usePopoverPosition } from './usePopoverPosition';
@@ -12,6 +12,18 @@ interface DetailPanelProps {
   project: Project | undefined;
   onRelease: () => void;
   onSaveDates: (startDate: string, endDate: string, startHalf: DayHalf, endHalf: DayHalf) => void;
+  onSaveDayNote: (date: string, note: string) => void;
+}
+
+/** Weekdays (Mon-Fri) in an inclusive date range — matches the calendar bar's
+ * own weekend-skipping, since nobody annotates a day nobody is booked to work. */
+function weekdaysInRange(startDate: string, endDate: string): string[] {
+  if (endDate < startDate) return [];
+  const days: string[] = [];
+  for (let d = fromISODate(startDate); d <= fromISODate(endDate); d = addDays(d, 1)) {
+    if (!isWeekend(d)) days.push(toISODate(d));
+  }
+  return days;
 }
 
 function durationDays(startDate: string, endDate: string, startHalf: DayHalf, endHalf: DayHalf): number {
@@ -24,7 +36,7 @@ function durationDays(startDate: string, endDate: string, startHalf: DayHalf, en
   return total;
 }
 
-export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveDates }: DetailPanelProps) {
+export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveDates, onSaveDayNote }: DetailPanelProps) {
   const [startDate, setStartDate] = useState(booking.startDate);
   const [endDate, setEndDate] = useState(booking.endDate);
   const [startHalf, setStartHalf] = useState<DayHalf>(booking.startHalf ?? 'AM');
@@ -152,6 +164,33 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
           </span>
         </div>
       )}
+
+      {(() => {
+        const noteDays = weekdaysInRange(booking.startDate, booking.endDate);
+        if (noteDays.length === 0) return null;
+        return (
+          <div className="field">
+            <label>Notes par jour</label>
+            <div className="pdc-daynotes">
+              {noteDays.map((iso) => (
+                <div className="pdc-daynote-row" key={iso}>
+                  <span className="pdc-daynote-date">{formatDayLabel(fromISODate(iso))}</span>
+                  <input
+                    className="input"
+                    placeholder="Annotation…"
+                    defaultValue={booking.dayNotes?.[iso] ?? ''}
+                    onBlur={(e) => {
+                      if (e.target.value.trim() !== (booking.dayNotes?.[iso] ?? '')) {
+                        onSaveDayNote(iso, e.target.value);
+                      }
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {hasChanges && !invalidRange && (
         <button type="button" className="btn btn-primary btn-block" onClick={() => onSaveDates(startDate, endDate, startHalf, endHalf)}>

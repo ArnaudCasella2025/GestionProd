@@ -356,6 +356,42 @@
   gap: var(--space-2);
   font-size: 13px;
 }
+.pdc-daynotes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.pdc-daynote-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pdc-daynote-date {
+  flex: none;
+  width: 48px;
+  font-size: 12px;
+  text-transform: capitalize;
+  color: color-mix(in srgb, var(--color-text) 65%, transparent);
+}
+.pdc-daynote-row .input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  padding: 4px 6px;
+}
+.pdc-bar-note-dot {
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  opacity: 0.85;
+  pointer-events: none;
+}
 
 .pdc-badge {
   position: absolute;

@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  deleteField,
   doc,
   onSnapshot,
   query,
@@ -71,6 +72,15 @@ export async function updateBookingDates(
   endHalf: DayHalf,
 ) {
   await updateDoc(doc(db, 'bookings', id), { startDate, endDate, startHalf, endHalf });
+}
+
+/** Sets or clears the annotation for one specific day of a booking, without
+ * touching any other day's note. An empty/blank note clears that day's entry. */
+export async function setBookingDayNote(bookingId: string, date: string, note: string) {
+  const trimmed = note.trim();
+  await updateDoc(doc(db, 'bookings', bookingId), {
+    [`dayNotes.${date}`]: trimmed === '' ? deleteField() : trimmed,
+  });
 }
 
 export async function createPerson(person: Omit<Person, 'id'>) {

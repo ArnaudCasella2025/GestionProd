@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { deleteBooking, updateBookingDates } from '../../lib/repository';
+import { deleteBooking, setBookingDayNote, updateBookingDates } from '../../lib/repository';
 import type { Booking, Person, Project, ZoomLevel } from '../../types';
 import { BookingPopover } from './BookingPopover';
 import { CalendarGrid } from './CalendarGrid';
@@ -140,6 +140,7 @@ export function Semainier({ people, projects, bookings }: SemainierProps) {
               updateBookingDates(detailPanel.booking.id, startDate, endDate, startHalf, endHalf).catch(console.error);
               setDetailPanel(null);
             }}
+            onSaveDayNote={(date, note) => setBookingDayNote(detailPanel.booking.id, date, note).catch(console.error)}
           />
         </>
       )}

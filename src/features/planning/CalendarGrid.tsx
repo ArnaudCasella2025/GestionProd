@@ -149,6 +149,19 @@ export function CalendarGrid({
                         background: project ? project.color : 'repeating-linear-gradient(45deg, var(--color-neutral-400), var(--color-neutral-400) 4px, var(--color-neutral-200) 4px, var(--color-neutral-200) 8px)',
                       };
 
+                      let noteDotCursor = 0;
+                      const noteDots: { key: string; left: number; note: string }[] = [];
+                      if (isDayUnit && booking.dayNotes) {
+                        for (let idx = segStart; idx <= segEnd; idx++) {
+                          const u = units[idx];
+                          const note = booking.dayNotes[u.startIso];
+                          if (note) {
+                            noteDots.push({ key: u.key, left: noteDotCursor + u.widthPx / 2 - 2, note });
+                          }
+                          noteDotCursor += u.widthPx;
+                        }
+                      }
+
                       return (
                         <button
                           key={`${booking.id}-${segIdx}`}
@@ -159,6 +172,9 @@ export function CalendarGrid({
                           title={label}
                         >
                           {segIdx === 0 && <span className="pdc-bar-label">{label}</span>}
+                          {noteDots.map((dot) => (
+                            <span key={dot.key} className="pdc-bar-note-dot" style={{ left: dot.left }} title={dot.note} />
+                          ))}
                         </button>
                       );
                     });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { formatFullDate, formatMonthLabel } from '../../lib/dates';
-import { deleteBooking, seedDemoData, updateBookingDates } from '../../lib/repository';
+import { deleteBooking, seedDemoData, setBookingDayNote, updateBookingDates } from '../../lib/repository';
 import { firebaseConfigured } from '../../lib/firebase';
 import type { Booking, Person, Project, ZoomLevel } from '../../types';
 import { BookingPopover } from './BookingPopover';
@@ -225,6 +225,7 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
               updateBookingDates(detailPanel.booking.id, startDate, endDate, startHalf, endHalf).catch(console.error);
               setDetailPanel(null);
             }}
+            onSaveDayNote={(date, note) => setBookingDayNote(detailPanel.booking.id, date, note).catch(console.error)}
           />
         </>
       )}

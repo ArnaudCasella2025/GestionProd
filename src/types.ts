@@ -103,6 +103,9 @@ export interface Booking {
   startHalf?: DayHalf;
   /** Which half of endDate the booking ends on. Defaults to 'PM' (end of day). */
   endHalf?: DayHalf;
+  /** Free-text annotation per booked day (ISO date -> note), e.g. to say what a
+   * multi-day booking is actually spent on, day by day. */
+  dayNotes?: Record<string, string>;
 }
 
 export type RequestStatus = 'pending' | 'approved' | 'refused';
