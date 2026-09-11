@@ -761,6 +761,10 @@
 .ts-team-subrow td {
   font-size: 13px;
 }
+.ts-cell-off {
+  background: transparent;
+  color: color-mix(in srgb, var(--color-text) 30%, transparent);
+}
 .ts-cell-under {
   background: var(--color-neutral-200);
   color: color-mix(in srgb, var(--color-text) 55%, transparent);

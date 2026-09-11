@@ -18,10 +18,10 @@ interface ActivityRow {
 
 const ALL = '__all__';
 
-/** Green on exactly 7h, grey below, red above 7h or on a non-worked day (weekend for now —
- * this app has no public-holiday calendar yet). */
+/** Green on exactly 7h, grey below, red above 7h. Non-worked days (weekend for now —
+ * this app has no public-holiday calendar yet) are left blank/white, not scored. */
 function cellClass(count: number, day: Date): string {
-  if (isWeekend(day)) return 'ts-cell-alert';
+  if (isWeekend(day)) return 'ts-cell-off';
   if (count > HOURS_PER_DAY) return 'ts-cell-alert';
   if (count === HOURS_PER_DAY) return 'ts-cell-complete';
   return 'ts-cell-under';
@@ -99,7 +99,7 @@ export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTea
           </span>
         </div>
         <span className="text-muted pdc-toolbar-hint">
-          Vert = 7h déclarées · Gris = incomplet · Rouge = heures sup. ou jour non travaillé
+          Vert = 7h déclarées · Gris = incomplet · Rouge = heures sup. · Blanc = jour non travaillé
         </span>
       </div>
 
