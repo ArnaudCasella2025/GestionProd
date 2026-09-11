@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from './firebase';
-import type { AbsenceRequest, Booking, DayHalf, Person, Project, TimesheetDay, TimesheetHourSlot } from '../types';
+import type { AbsenceRequest, AllocationOverride, Booking, DayHalf, Person, Project, TimesheetDay, TimesheetHourSlot } from '../types';
 import { DEMO_PEOPLE, DEMO_PROJECTS, DEMO_BOOKINGS, DEMO_REQUESTS } from '../data/demoData';
 
 function useCollectionData<T>(name: string): { data: T[]; loading: boolean } {
@@ -41,6 +41,7 @@ export const useProjects = () => useCollectionData<Project>('projects');
 export const useBookings = () => useCollectionData<Booking>('bookings');
 export const useRequests = () => useCollectionData<AbsenceRequest>('requests');
 export const useTimesheets = () => useCollectionData<TimesheetDay>('timesheets');
+export const useAllocationOverrides = () => useCollectionData<AllocationOverride>('allocationOverrides');
 
 export async function createBooking(booking: Omit<Booking, 'id'>) {
   await addDoc(collection(db, 'bookings'), booking);
@@ -87,6 +88,22 @@ export async function deleteProject(id: string) {
 /** Overwrites a person's whole day of declared hours (one doc per person per day). */
 export async function setTimesheetDay(personId: string, date: string, hours: (TimesheetHourSlot | null)[]) {
   await setDoc(doc(db, 'timesheets', `${personId}_${date}`), { personId, date, hours });
+}
+
+/** Sets (or replaces) the manual "Officiel" override for one person/project/month. */
+export async function setAllocationOverride(personId: string, projectId: string, year: number, month: number, days: number) {
+  await setDoc(doc(db, 'allocationOverrides', `${personId}_${projectId}_${year}_${month}`), {
+    personId,
+    projectId,
+    year,
+    month,
+    days,
+  });
+}
+
+/** Clears a manual override so the cell falls back to the calculated value. */
+export async function deleteAllocationOverride(personId: string, projectId: string, year: number, month: number) {
+  await deleteDoc(doc(db, 'allocationOverrides', `${personId}_${projectId}_${year}_${month}`));
 }
 
 export async function approveRequest(request: AbsenceRequest) {

@@ -113,3 +113,19 @@ export interface TimesheetDay {
   date: string;
   hours: (TimesheetHourSlot | null)[];
 }
+
+/**
+ * A manual override of the "Officiel" planned allocation for one person, on one
+ * project, for one calendar month. Stored in days (jours-homme) — the € figure
+ * shown in "Affectation des permanents" is always days × the person's dailyRate.
+ * Absent means "use the value calculated from Plan de charge bookings instead".
+ */
+export interface AllocationOverride {
+  id: string;
+  personId: string;
+  projectId: string;
+  year: number;
+  /** 1-12 */
+  month: number;
+  days: number;
+}

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   approveRequest,
   refuseRequest,
+  useAllocationOverrides,
   useBookings,
   usePeople,
   useProjects,
@@ -10,6 +11,7 @@ import {
 } from '../../lib/repository';
 import { Equipe } from './Equipe';
 import { NavRail, type PlanningView } from './NavRail';
+import { PermanentAllocations } from './PermanentAllocations';
 import { PlanDeCharge } from './PlanDeCharge';
 import { PlanDeProduction } from './PlanDeProduction';
 import { Projects } from './Projects';
@@ -23,6 +25,7 @@ export function PlanningApp() {
   const { data: bookings } = useBookings();
   const { data: requests } = useRequests();
   const { data: timesheets } = useTimesheets();
+  const { data: allocationOverrides } = useAllocationOverrides();
 
   const [view, setView] = useState<PlanningView>('charge');
   const [requestsOpen, setRequestsOpen] = useState(false);
@@ -46,6 +49,15 @@ export function PlanningApp() {
       {view === 'production' && <PlanDeProduction people={people} projects={projects} bookings={bookings} />}
       {view === 'semainier' && <Semainier people={people} projects={projects} bookings={bookings} />}
       {view === 'timesheets' && <Timesheets people={people} projects={projects} timesheets={timesheets} />}
+      {view === 'affectation' && (
+        <PermanentAllocations
+          people={people}
+          projects={projects}
+          bookings={bookings}
+          timesheets={timesheets}
+          allocationOverrides={allocationOverrides}
+        />
+      )}
       {view === 'projets' && <Projects projects={projects} bookings={bookings} people={people} />}
       {view === 'equipe' && <Equipe people={people} />}
 
