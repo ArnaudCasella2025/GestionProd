@@ -18,6 +18,28 @@ type Mode = 'officiel' | 'reel';
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const MONTH_LABELS = MONTHS.map((m) => new Date(2000, m - 1, 1).toLocaleDateString('fr-FR', { month: 'long' }));
 
+type MonthStatus = 'past' | 'current' | 'future';
+
+function monthStatus(year: number, month: number): MonthStatus {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  if (year < currentYear || (year === currentYear && month < currentMonth)) return 'past';
+  if (year > currentYear || (year === currentYear && month > currentMonth)) return 'future';
+  return 'current';
+}
+
+const MONTH_STATUS_LABEL: Record<MonthStatus, string> = {
+  past: 'Déclaré',
+  current: 'En cours',
+  future: 'Projeté',
+};
+const MONTH_STATUS_TAG_CLASS: Record<MonthStatus, string> = {
+  past: 'tag-accent',
+  current: 'tag-accent-2',
+  future: 'tag-outline',
+};
+
 export function PermanentAllocations({ people, projects, bookings, timesheets, allocationOverrides }: PermanentAllocationsProps) {
   const [personId, setPersonId] = useState(() => people[0]?.id ?? '');
   const [year, setYear] = useState(() => new Date().getFullYear());
@@ -150,7 +172,7 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
         <p className="text-muted">Aucune ressource ou aucun projet pour l'instant.</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
-          <table className="table pa-table">
+          <table className={`table pa-table${mode === 'reel' ? ' pa-table-reel' : ''}`}>
             <thead>
               <tr>
                 <th>Mois</th>
@@ -164,9 +186,18 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
               </tr>
             </thead>
             <tbody>
-              {MONTHS.map((month, i) => (
+              {MONTHS.map((month, i) => {
+                const status = monthStatus(year, month);
+                return (
                 <tr key={month}>
-                  <td style={{ whiteSpace: 'nowrap', textTransform: 'capitalize' }}>{MONTH_LABELS[i]}</td>
+                  <td style={{ whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
+                    {MONTH_LABELS[i]}
+                    {mode === 'reel' && (
+                      <span className={`tag ${MONTH_STATUS_TAG_CLASS[status]}`} style={{ marginLeft: 6, textTransform: 'none' }}>
+                        {MONTH_STATUS_LABEL[status]}
+                      </span>
+                    )}
+                  </td>
                   {projects.map((project) => {
                     const isEditing = editingCell?.projectId === project.id && editingCell.month === month;
                     const days = daysFor(project.id, month);
@@ -201,7 +232,8 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
                     );
                   })}
                 </tr>
-              ))}
+                );
+              })}
               <tr className="pa-total-row">
                 <td>Total déclaré</td>
                 {projects.map((project) => {

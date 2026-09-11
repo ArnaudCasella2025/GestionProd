@@ -784,6 +784,14 @@
 .pa-table th {
   vertical-align: top;
 }
+/* A bluish wash over the whole "Réel" table so it's never mistaken for the
+ * editable "Officiel" plan at a glance. */
+.pa-table-reel {
+  background: var(--color-accent-100);
+}
+.pa-table-reel thead th {
+  background: color-mix(in srgb, var(--color-accent-100) 60%, transparent);
+}
 .pa-budget-hint {
   font-family: var(--font-body);
   font-weight: normal;

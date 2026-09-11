@@ -1,4 +1,4 @@
-import { toISODate } from '../../lib/dates';
+import { isWeekend, toISODate } from '../../lib/dates';
 import { HOURS_PER_DAY, type Booking, type TimesheetDay } from '../../types';
 import { coveredHalves } from './calc';
 
@@ -6,18 +6,17 @@ function daysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
-function isoForMonthDay(year: number, month: number, day: number): string {
-  return toISODate(new Date(year, month - 1, day));
-}
-
 /** Days booked (Plan de charge) on a project within one calendar month, for
- * bookings already filtered to one person and one project. */
+ * bookings already filtered to one person and one project. Weekends don't
+ * count as bookable capacity, even when a booking's date range spans one. */
 export function bookedDaysInMonth(personProjectBookings: Booking[], year: number, month: number): number {
   if (personProjectBookings.length === 0) return 0;
   const total = daysInMonth(year, month);
   let sum = 0;
   for (let day = 1; day <= total; day++) {
-    const iso = isoForMonthDay(year, month, day);
+    const date = new Date(year, month - 1, day);
+    if (isWeekend(date)) continue;
+    const iso = toISODate(date);
     for (const booking of personProjectBookings) sum += coveredHalves(booking, iso).length * 0.5;
   }
   return sum;
@@ -40,7 +39,9 @@ export function realDaysInMonth(
   const timesheetByDate = new Map(personTimesheets.map((t) => [t.date, t]));
   let sum = 0;
   for (let day = 1; day <= total; day++) {
-    const iso = isoForMonthDay(year, month, day);
+    const date = new Date(year, month - 1, day);
+    if (isWeekend(date)) continue;
+    const iso = toISODate(date);
     if (iso <= todayIso) {
       const declared = timesheetByDate.get(iso);
       if (declared) sum += declared.hours.filter((h) => h?.projectId === projectId).length / HOURS_PER_DAY;
