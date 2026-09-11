@@ -83,8 +83,21 @@ export interface AbsenceRequest {
 
 export type ZoomLevel = 'semaine' | 'mois' | 'annee';
 
-/** A work day is split into this many hourly slots to declare on a timesheet. */
+/** A day needs this many declared hours (anywhere in TIMESHEET_HOURS) to count as complete. */
 export const HOURS_PER_DAY = 7;
+
+/** Clock-hour window that counts as regular time; slots outside it are overtime. */
+export const OFFICE_START_HOUR = 9;
+export const OFFICE_END_HOUR = 19;
+
+/** Full range of hourly slots offered on the timesheet grid — wider than office
+ * hours on both ends so early starts and evening overtime can be declared. */
+export const TIMESHEET_START_HOUR = 7;
+export const TIMESHEET_END_HOUR = 22;
+export const TIMESHEET_HOURS = Array.from(
+  { length: TIMESHEET_END_HOUR - TIMESHEET_START_HOUR },
+  (_, i) => TIMESHEET_START_HOUR + i,
+);
 
 /** What one declared hour was spent on — a project, or an absence type. */
 export interface TimesheetHourSlot {
@@ -92,7 +105,7 @@ export interface TimesheetHourSlot {
   absenceType?: AbsenceType;
 }
 
-/** One person's timesheet for one day: HOURS_PER_DAY slots, null where undeclared. */
+/** One person's timesheet for one day: one slot per hour in TIMESHEET_HOURS, null where undeclared. */
 export interface TimesheetDay {
   id: string;
   personId: string;

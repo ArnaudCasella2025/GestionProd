@@ -46,7 +46,7 @@ export function Timesheets({ people, projects, timesheets }: TimesheetsProps) {
       {mode === 'declare' ? (
         <TimesheetDeclare people={people} projects={projects} timesheets={timesheets} />
       ) : (
-        <TimesheetTeamView people={people} timesheets={timesheets} />
+        <TimesheetTeamView people={people} projects={projects} timesheets={timesheets} />
       )}
     </main>
   );

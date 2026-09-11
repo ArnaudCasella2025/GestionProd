@@ -1,15 +1,29 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { addMonths, eachDay, isWeekend, startOfMonth, toISODate } from '../../lib/dates';
-import { HOURS_PER_DAY, type Person, type TimesheetDay } from '../../types';
+import { ABSENCE_LABELS, HOURS_PER_DAY, type AbsenceType, type Person, type Project, type TimesheetDay } from '../../types';
 import { declaredHoursCount } from './timesheetCalc';
 
 interface TimesheetTeamViewProps {
   people: Person[];
+  projects: Project[];
   timesheets: TimesheetDay[];
 }
 
-export function TimesheetTeamView({ people, timesheets }: TimesheetTeamViewProps) {
+interface ActivityRow {
+  key: string;
+  label: string;
+  color?: string;
+  perDate: Map<string, number>;
+}
+
+const ALL = '__all__';
+
+export function TimesheetTeamView({ people, projects, timesheets }: TimesheetTeamViewProps) {
   const [anchor, setAnchor] = useState(() => new Date());
+  const [personFilter, setPersonFilter] = useState(ALL);
+  const [projectFilter, setProjectFilter] = useState(ALL);
+
+  const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
 
   const monthStart = startOfMonth(anchor);
   const daysInMonth = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate();
@@ -24,6 +38,43 @@ export function TimesheetTeamView({ people, timesheets }: TimesheetTeamViewProps
     for (const t of timesheets) map.set(`${t.personId}__${t.date}`, t);
     return map;
   }, [timesheets]);
+
+  // Per person, hours declared each day broken down by which project/absence they went to.
+  const activityRowsByPerson = useMemo(() => {
+    const monthDates = new Set(weekdays.map((d) => toISODate(d)));
+    const byPerson = new Map<string, Map<string, ActivityRow>>();
+    for (const t of timesheets) {
+      if (!monthDates.has(t.date)) continue;
+      let activities = byPerson.get(t.personId);
+      if (!activities) {
+        activities = new Map();
+        byPerson.set(t.personId, activities);
+      }
+      for (const slot of t.hours) {
+        if (!slot) continue;
+        const key = slot.projectId ?? `absence:${slot.absenceType}`;
+        let row = activities.get(key);
+        if (!row) {
+          const project = slot.projectId ? projectsById.get(slot.projectId) : undefined;
+          row = {
+            key,
+            label: slot.projectId ? (project?.name ?? 'Projet supprimé') : ABSENCE_LABELS[slot.absenceType as AbsenceType],
+            color: project?.color,
+            perDate: new Map(),
+          };
+          activities.set(key, row);
+        }
+        row.perDate.set(t.date, (row.perDate.get(t.date) ?? 0) + 1);
+      }
+    }
+    const result = new Map<string, ActivityRow[]>();
+    for (const [personId, activities] of byPerson) {
+      result.set(personId, [...activities.values()].sort((a, b) => a.label.localeCompare(b.label)));
+    }
+    return result;
+  }, [timesheets, weekdays, projectsById]);
+
+  const visiblePeople = personFilter === ALL ? people : people.filter((p) => p.id === personFilter);
 
   return (
     <>
@@ -45,6 +96,29 @@ export function TimesheetTeamView({ people, timesheets }: TimesheetTeamViewProps
         <span className="text-muted pdc-toolbar-hint">Les heures manquantes sur les jours passés sont en rouge</span>
       </div>
 
+      <div className="pdc-toolbar">
+        <div className="field" style={{ marginBottom: 0 }}>
+          <select className="input" value={personFilter} onChange={(e) => setPersonFilter(e.target.value)} style={{ width: 220 }}>
+            <option value={ALL}>Toutes les ressources</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <select className="input" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} style={{ width: 220 }}>
+            <option value={ALL}>Tous les projets</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {people.length === 0 ? (
         <p className="text-muted">Aucune ressource pour l'instant.</p>
       ) : (
@@ -52,7 +126,7 @@ export function TimesheetTeamView({ people, timesheets }: TimesheetTeamViewProps
           <table className="table ts-team-table">
             <thead>
               <tr>
-                <th>Ressource</th>
+                <th>Ressource / Projet</th>
                 {weekdays.map((d) => (
                   <th key={toISODate(d)} style={{ textAlign: 'center' }}>
                     {d.getDate()}
@@ -61,23 +135,72 @@ export function TimesheetTeamView({ people, timesheets }: TimesheetTeamViewProps
               </tr>
             </thead>
             <tbody>
-              {people.map((person) => (
-                <tr key={person.id}>
-                  <td style={{ whiteSpace: 'nowrap' }}>{person.name}</td>
-                  {weekdays.map((d) => {
-                    const iso = toISODate(d);
-                    const day = byPersonDate.get(`${person.id}__${iso}`);
-                    const declared = declaredHoursCount(day);
-                    const isPast = iso < todayIso;
-                    const incomplete = isPast && declared < HOURS_PER_DAY;
-                    return (
-                      <td key={iso} className={incomplete ? 'ts-cell-missing' : undefined} style={{ textAlign: 'center' }}>
-                        {declared}/{HOURS_PER_DAY}
+              {visiblePeople.map((person) => {
+                const activities = (activityRowsByPerson.get(person.id) ?? []).filter(
+                  (row) => projectFilter === ALL || row.key === projectFilter,
+                );
+
+                if (projectFilter !== ALL) {
+                  // A specific project is selected: show only that activity's row, no person total
+                  // (the total mixes every project, so it wouldn't mean much filtered down like this).
+                  return activities.map((row) => (
+                    <tr key={`${person.id}__${row.key}`}>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {row.color && <span className="pdc-color-dot" style={{ background: row.color, marginRight: 6 }} />}
+                        {!row.color && <span className="pdc-color-dot pdc-color-dot-hatch" style={{ marginRight: 6 }} />}
+                        {person.name} — {row.label}
                       </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                      {weekdays.map((d) => {
+                        const iso = toISODate(d);
+                        const count = row.perDate.get(iso) ?? 0;
+                        return (
+                          <td key={iso} style={{ textAlign: 'center' }}>
+                            {count}/{HOURS_PER_DAY}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ));
+                }
+
+                return (
+                  <Fragment key={person.id}>
+                    <tr>
+                      <td style={{ whiteSpace: 'nowrap', fontWeight: 'var(--font-heading-weight)' }}>{person.name}</td>
+                      {weekdays.map((d) => {
+                        const iso = toISODate(d);
+                        const day = byPersonDate.get(`${person.id}__${iso}`);
+                        const declared = declaredHoursCount(day);
+                        const isPast = iso < todayIso;
+                        const incomplete = isPast && declared < HOURS_PER_DAY;
+                        return (
+                          <td key={iso} className={incomplete ? 'ts-cell-missing' : undefined} style={{ textAlign: 'center' }}>
+                            {declared}/{HOURS_PER_DAY}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    {activities.map((row) => (
+                      <tr key={`${person.id}__${row.key}`} className="ts-team-subrow">
+                        <td style={{ whiteSpace: 'nowrap', paddingLeft: 'var(--space-4)' }}>
+                          {row.color && <span className="pdc-color-dot" style={{ background: row.color, marginRight: 6 }} />}
+                          {!row.color && <span className="pdc-color-dot pdc-color-dot-hatch" style={{ marginRight: 6 }} />}
+                          {row.label}
+                        </td>
+                        {weekdays.map((d) => {
+                          const iso = toISODate(d);
+                          const count = row.perDate.get(iso) ?? 0;
+                          return (
+                            <td key={iso} style={{ textAlign: 'center' }}>
+                              {count}/{HOURS_PER_DAY}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

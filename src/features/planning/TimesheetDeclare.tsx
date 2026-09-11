@@ -1,9 +1,18 @@
 import { useMemo, useState, type MouseEvent } from 'react';
 import { addDays, eachDay, formatDayLabel, formatFullDate, fromISODate, isWeekend, startOfWeek, toISODate } from '../../lib/dates';
 import { setTimesheetDay } from '../../lib/repository';
-import { ABSENCE_LABELS, HOURS_PER_DAY, type AbsenceType, type Person, type Project, type TimesheetDay, type TimesheetHourSlot } from '../../types';
+import {
+  ABSENCE_LABELS,
+  HOURS_PER_DAY,
+  TIMESHEET_HOURS,
+  type AbsenceType,
+  type Person,
+  type Project,
+  type TimesheetDay,
+  type TimesheetHourSlot,
+} from '../../types';
 import { TimesheetHourPopover } from './TimesheetHourPopover';
-import { declaredHoursCount, missingDaysForPerson, totalMissingHours } from './timesheetCalc';
+import { declaredHoursCount, isOvertimeHour, missingDaysForPerson, totalMissingHours } from './timesheetCalc';
 
 interface TimesheetDeclareProps {
   people: Person[];
@@ -33,7 +42,7 @@ export function TimesheetDeclare({ people, projects, timesheets }: TimesheetDecl
     return map;
   }, [timesheets, personId]);
 
-  const weekDays = useMemo(() => eachDay(startOfWeek(anchor), 7).filter((d) => !isWeekend(d)), [anchor]);
+  const weekDays = useMemo(() => eachDay(startOfWeek(anchor), 7), [anchor]);
   const todayIso = toISODate(new Date());
 
   const missing = useMemo(() => missingDaysForPerson(personId, timesheets, LOOKBACK_DAYS), [personId, timesheets]);
@@ -41,7 +50,9 @@ export function TimesheetDeclare({ people, projects, timesheets }: TimesheetDecl
 
   function hoursFor(date: string): (TimesheetHourSlot | null)[] {
     const day = byDate.get(date);
-    return day ? [...day.hours] : new Array(HOURS_PER_DAY).fill(null);
+    const hours = day ? [...day.hours] : [];
+    while (hours.length < TIMESHEET_HOURS.length) hours.push(null);
+    return hours;
   }
 
   function assign(slot: TimesheetHourSlot | null) {
@@ -113,26 +124,44 @@ export function TimesheetDeclare({ people, projects, timesheets }: TimesheetDecl
         <p className="text-muted">Aucune ressource disponible.</p>
       ) : (
         <div className="ts-week">
+          <div className="ts-hours-header">
+            <div className="ts-day-label" />
+            <div className="ts-hour-cells">
+              {TIMESHEET_HOURS.map((hour) => (
+                <div key={hour} className={`ts-hour-head${isOvertimeHour(hour) ? ' ts-hour-head-overtime' : ''}`}>
+                  {hour}h
+                </div>
+              ))}
+            </div>
+          </div>
+
           {weekDays.map((day) => {
             const iso = toISODate(day);
             const hours = hoursFor(iso);
             const declared = declaredHoursCount(byDate.get(iso));
-            const incomplete = iso < todayIso && declared < HOURS_PER_DAY;
+            const weekend = isWeekend(day);
+            const incomplete = !weekend && iso < todayIso && declared < HOURS_PER_DAY;
 
             return (
-              <div className={`ts-day-row${incomplete ? ' ts-day-incomplete' : ''}`} key={iso}>
+              <div
+                className={`ts-day-row${incomplete ? ' ts-day-incomplete' : ''}${weekend ? ' ts-day-weekend' : ''}`}
+                key={iso}
+              >
                 <div className="ts-day-label">
                   {formatDayLabel(day)}
                   {iso === todayIso && <span className="tag tag-accent" style={{ marginLeft: 6 }}>Aujourd'hui</span>}
                 </div>
                 <div className="ts-hour-cells">
                   {hours.map((slot, hourIndex) => {
+                    const hour = TIMESHEET_HOURS[hourIndex];
+                    const overtime = isOvertimeHour(hour);
                     const project = slot?.projectId ? projectsById.get(slot.projectId) : undefined;
-                    const label = slot
+                    const activity = slot
                       ? slot.projectId
                         ? (project?.name ?? 'Projet supprimé')
                         : ABSENCE_LABELS[slot.absenceType as AbsenceType]
-                      : `Heure ${hourIndex + 1}`;
+                      : null;
+                    const label = `${hour}h – ${hour + 1}h${activity ? ` · ${activity}` : ''}${overtime ? ' (heure sup.)' : ''}`;
                     const style = slot
                       ? {
                           background: project
@@ -145,7 +174,7 @@ export function TimesheetDeclare({ people, projects, timesheets }: TimesheetDecl
                       <button
                         key={hourIndex}
                         type="button"
-                        className={`ts-hour-cell${!slot ? ' ts-hour-empty' : ''}`}
+                        className={`ts-hour-cell${!slot ? ' ts-hour-empty' : ''}${overtime ? ' ts-hour-overtime' : ''}`}
                         style={style}
                         title={label}
                         onClick={(e: MouseEvent) => setActiveCell({ date: iso, hourIndex, x: e.clientX, y: e.clientY })}

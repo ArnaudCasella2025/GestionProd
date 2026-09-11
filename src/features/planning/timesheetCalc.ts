@@ -1,9 +1,13 @@
 import { addDays, isWeekend, toISODate } from '../../lib/dates';
-import { HOURS_PER_DAY, type TimesheetDay } from '../../types';
+import { HOURS_PER_DAY, OFFICE_END_HOUR, OFFICE_START_HOUR, type TimesheetDay } from '../../types';
 
 export function declaredHoursCount(day: TimesheetDay | undefined): number {
   if (!day) return 0;
   return day.hours.filter((h) => h != null).length;
+}
+
+export function isOvertimeHour(hour: number): boolean {
+  return hour < OFFICE_START_HOUR || hour >= OFFICE_END_HOUR;
 }
 
 export interface MissingDay {
