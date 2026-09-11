@@ -40,10 +40,29 @@ export const JOB_TITLES = [
   'Sound designer',
 ] as const;
 
+/** One entry in a person's salary history, effective from startDate until the
+ * next entry (or forever, if it's the most recent one). */
+export interface SalaryRecord {
+  /** ISO date (YYYY-MM-DD) this salary takes effect from, inclusive. */
+  startDate: string;
+  /** Monthly gross salary, in euros. */
+  grossMonthlySalary: number;
+  /** Employer social-charges rate, as a percentage (e.g. 40 for 40%). */
+  chargesPercent: number;
+}
+
+/** Conventional working days per month used to derive a daily rate from a
+ * monthly salary — a business-policy constant; adjust here if the studio's
+ * own convention differs. */
+export const WORKING_DAYS_PER_MONTH = 21;
+
 export interface Person {
   id: string;
   name: string;
   role: string;
+  /** The rate used everywhere costs are computed. Manually set, unless
+   * salaryHistory is non-empty, in which case it's kept in sync with the
+   * record effective today (see salaryCalc.ts). */
   dailyRate: number;
   /** Access level for future role-based auth — see the Équipe screen's own notice. Defaults to 'user'. */
   accessLevel?: AccessLevel;
@@ -51,6 +70,8 @@ export interface Person {
   congesPerYear?: number;
   /** Yearly RTT quota, in workdays. Defaults to DEFAULT_RTT_PER_YEAR if unset. */
   rttPerYear?: number;
+  /** Salary changes over time. Empty/unset means dailyRate is a plain manual value. */
+  salaryHistory?: SalaryRecord[];
 }
 
 export type ProjectStatus = 'sous_controle' | 'tendu' | 'depassement';
