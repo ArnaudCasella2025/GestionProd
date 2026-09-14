@@ -31,7 +31,6 @@ const ACCESS_LEVELS: AccessLevel[] = ['admin', 'responsable', 'user'];
 export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalProps) {
   const [name, setName] = useState(initial?.name ?? '');
   const [role, setRole] = useState(initial?.role ?? JOB_TITLES[0]);
-  const [dailyRate, setDailyRate] = useState(String(initial?.dailyRate ?? ''));
   const [accessLevel, setAccessLevel] = useState<AccessLevel>(initial?.accessLevel ?? 'user');
   const [congesPerYear, setCongesPerYear] = useState(String(initial?.congesPerYear ?? DEFAULT_CONGES_PER_YEAR));
   const [rttPerYear, setRttPerYear] = useState(String(initial?.rttPerYear ?? DEFAULT_RTT_PER_YEAR));
@@ -42,19 +41,21 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
   const [recordGross, setRecordGross] = useState('');
   const [recordCharges, setRecordCharges] = useState('');
   const hasSalaryHistory = salaryHistory.length > 0;
+  // A person with no salary history yet (created before this feature existed)
+  // keeps whatever flat rate they already had, until someone declares a real salary for them.
+  const legacyRate = initial?.dailyRate;
   // Falls back to the person's last known rate if every salary record is dated
   // in the future (nothing is effective yet as of today).
-  const computedRate = hasSalaryHistory ? dailyRateOn(salaryHistory, todayIso, initial?.dailyRate ?? 0) : null;
+  const computedRate = hasSalaryHistory ? dailyRateOn(salaryHistory, todayIso, legacyRate ?? 0) : null;
   const hasEffectiveRecord = hasSalaryHistory && recordEffectiveOn(salaryHistory, todayIso) != null;
+  const effectiveRate = computedRate ?? legacyRate ?? null;
 
-  const rateNumber = computedRate ?? Number(dailyRate);
   const congesNumber = Number(congesPerYear);
   const rttNumber = Number(rttPerYear);
   const isValid =
     name.trim().length > 0 &&
-    (hasSalaryHistory || dailyRate.trim().length > 0) &&
-    Number.isFinite(rateNumber) &&
-    rateNumber > 0 &&
+    effectiveRate != null &&
+    effectiveRate > 0 &&
     Number.isFinite(congesNumber) &&
     congesNumber >= 0 &&
     Number.isFinite(rttNumber) &&
@@ -89,7 +90,7 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
     onSave({
       name: name.trim(),
       role,
-      dailyRate: rateNumber,
+      dailyRate: effectiveRate!,
       accessLevel,
       congesPerYear: congesNumber,
       rttPerYear: rttNumber,
@@ -120,31 +121,23 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
           </select>
         </div>
 
-        {hasSalaryHistory ? (
-          <div className="field">
-            <label>Taux journalier moyen (TJM)</label>
+        <div className="field">
+          <label>Taux journalier moyen (TJM)</label>
+          {hasSalaryHistory ? (
             <div className={`tmm-computed-rate${hasEffectiveRecord ? '' : ' tmm-computed-rate-pending'}`}>
               {computedRate!.toLocaleString('fr-FR')} €/j
               {hasEffectiveRecord
                 ? ' — calculé depuis le salaire ci-dessous'
                 : ' — dernier taux connu (le salaire ci-dessous n\'est pas encore effectif)'}
             </div>
-          </div>
-        ) : (
-          <div className="field">
-            <label htmlFor="team-rate">Taux journalier moyen (TJM)</label>
-            <input
-              id="team-rate"
-              className="input"
-              type="number"
-              min={0}
-              step={1}
-              value={dailyRate}
-              onChange={(e) => setDailyRate(e.target.value)}
-              required
-            />
-          </div>
-        )}
+          ) : legacyRate != null ? (
+            <div className="tmm-computed-rate tmm-computed-rate-legacy">
+              {legacyRate.toLocaleString('fr-FR')} €/j — valeur héritée, ajoutez un salaire ci-dessous pour le calculer automatiquement
+            </div>
+          ) : (
+            <div className="tmm-computed-rate tmm-computed-rate-pending">Aucun salaire renseigné — ajoutez-en un ci-dessous</div>
+          )}
+        </div>
 
         <div className="field">
           <label>Historique de salaire</label>

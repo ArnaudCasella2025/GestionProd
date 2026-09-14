@@ -925,6 +925,11 @@
   background: var(--ts-office-tint);
   color: var(--ts-office-accent);
 }
+.tmm-computed-rate-legacy {
+  background: var(--color-neutral-200);
+  color: color-mix(in srgb, var(--color-text) 70%, transparent);
+  font-weight: normal;
+}
 .tmm-salary-table {
   font-size: 13px;
   margin-bottom: var(--space-2);
