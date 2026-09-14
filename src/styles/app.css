@@ -17,6 +17,13 @@
   gap: var(--space-4);
   padding: var(--space-4) var(--space-3);
   background: var(--color-surface);
+  /* Pinned to the viewport and scrollable on its own, so the account block
+     at the bottom (logout, test role) stays reachable without first
+     scrolling past whatever is in the main content. */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 .pdc-rail-sections {
   list-style: none;
@@ -490,6 +497,9 @@
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
+    position: static;
+    height: auto;
+    overflow-y: visible;
   }
   .pdc-rail-sections {
     flex-direction: row;
