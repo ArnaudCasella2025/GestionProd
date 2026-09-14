@@ -1,17 +1,19 @@
 rules_version = '2';
 
-// TEMPORARY development rules — no authentication is implemented yet.
-// Anyone with the Firebase config can read/write this database until the
-// expiry date below (same pattern as the Firebase console's "test mode").
+// Firebase Authentication now gates the whole database: any signed-in user
+// can read/write everything below, until the expiry date (same pattern as
+// the Firebase console's "test mode"), extended past sign-in.
 //
-// Before entering any real data (in particular the employee salary/rate
-// view reserved to the Admin role in the cahier des charges), replace this
-// with Firebase Authentication + role-based rules (Admin / Responsable /
-// User, as described in the specs).
+// Role-based rules (Admin / Responsable / User, as described in the specs)
+// aren't enforced here yet — the app's role restrictions (see the "Rôle de
+// test" selector) are UI-only for now. Before entering any real data (in
+// particular the employee salary/rate data reserved to the Admin role),
+// add per-role checks here too, e.g. by storing each user's role in a
+// "userRoles/{uid}" document this rules file can look up.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 12, 31);
+      allow read, write: if request.auth != null && request.time < timestamp.date(2026, 12, 31);
     }
   }
 }

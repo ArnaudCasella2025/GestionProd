@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTestRole } from '../../lib/testRole';
 import type { Person, Project, TimesheetDay } from '../../types';
 import { TimesheetDeclare } from './TimesheetDeclare';
 import { TimesheetTeamView } from './TimesheetTeamView';
@@ -12,7 +13,10 @@ interface TimesheetsProps {
 type Mode = 'declare' | 'team';
 
 export function Timesheets({ people, projects, timesheets }: TimesheetsProps) {
+  const { role } = useTestRole();
+  const canSeeTeamView = role === 'admin' || role === 'responsable';
   const [mode, setMode] = useState<Mode>('declare');
+  const effectiveMode = canSeeTeamView ? mode : 'declare';
 
   return (
     <main className="pdc-main">
@@ -25,25 +29,26 @@ export function Timesheets({ people, projects, timesheets }: TimesheetsProps) {
         <div className="pdc-header-rule-thin" />
       </header>
 
-      <div className="seg" style={{ width: 'fit-content' }}>
-        <label className="seg-opt">
-          <input type="radio" name="ts-mode" checked={mode === 'declare'} onChange={() => setMode('declare')} />
-          Ma saisie
-        </label>
-        <label className="seg-opt">
-          <input type="radio" name="ts-mode" checked={mode === 'team'} onChange={() => setMode('team')} />
-          Vue équipe
-        </label>
-      </div>
+      {canSeeTeamView && (
+        <div className="seg" style={{ width: 'fit-content' }}>
+          <label className="seg-opt">
+            <input type="radio" name="ts-mode" checked={effectiveMode === 'declare'} onChange={() => setMode('declare')} />
+            Ma saisie
+          </label>
+          <label className="seg-opt">
+            <input type="radio" name="ts-mode" checked={effectiveMode === 'team'} onChange={() => setMode('team')} />
+            Vue équipe
+          </label>
+        </div>
+      )}
 
-      {mode === 'team' && (
+      {effectiveMode === 'team' && (
         <p className="text-muted" style={{ marginTop: 0 }}>
-          Réservée à la direction de production — voir le README concernant les droits d'accès, pas encore appliqués
-          côté serveur.
+          Réservée à la direction de production.
         </p>
       )}
 
-      {mode === 'declare' ? (
+      {effectiveMode === 'declare' ? (
         <TimesheetDeclare people={people} projects={projects} timesheets={timesheets} />
       ) : (
         <TimesheetTeamView people={people} projects={projects} timesheets={timesheets} />

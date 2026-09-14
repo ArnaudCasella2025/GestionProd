@@ -1,4 +1,5 @@
 import { formatFullDate, fromISODate } from '../../lib/dates';
+import { useTestRole } from '../../lib/testRole';
 import { ABSENCE_LABELS, type AbsenceRequest, type Person } from '../../types';
 
 interface RequestsModalProps {
@@ -10,12 +11,19 @@ interface RequestsModalProps {
 }
 
 export function RequestsModal({ requests, peopleById, onApprove, onRefuse, onClose }: RequestsModalProps) {
+  const { role } = useTestRole();
+  const canDecide = role === 'admin' || role === 'responsable';
   const pending = requests.filter((r) => r.status === 'pending');
 
   return (
     <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog" style={{ width: 'min(640px, 100%)' }}>
         <div className="dialog-title">Demandes d'absence</div>
+        {!canDecide && (
+          <p className="text-muted" style={{ marginTop: 0 }}>
+            Consultation seule — la validation est réservée à la direction de production.
+          </p>
+        )}
         {pending.length === 0 ? (
           <p className="text-muted">Aucune demande en attente.</p>
         ) : (
@@ -25,7 +33,7 @@ export function RequestsModal({ requests, peopleById, onApprove, onRefuse, onClo
                 <th>Employé</th>
                 <th>Type</th>
                 <th>Période</th>
-                <th />
+                {canDecide && <th />}
               </tr>
             </thead>
             <tbody>
@@ -41,16 +49,18 @@ export function RequestsModal({ requests, peopleById, onApprove, onRefuse, onClo
                       {formatFullDate(fromISODate(request.startDate))}
                       {request.startDate !== request.endDate ? ` → ${formatFullDate(fromISODate(request.endDate))}` : ''}
                     </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button type="button" className="btn btn-primary" onClick={() => onApprove(request)}>
-                          Valider
-                        </button>
-                        <button type="button" className="btn btn-secondary" onClick={() => onRefuse(request.id)}>
-                          Refuser
-                        </button>
-                      </div>
-                    </td>
+                    {canDecide && (
+                      <td>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button type="button" className="btn btn-primary" onClick={() => onApprove(request)}>
+                            Valider
+                          </button>
+                          <button type="button" className="btn btn-secondary" onClick={() => onRefuse(request.id)}>
+                            Refuser
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

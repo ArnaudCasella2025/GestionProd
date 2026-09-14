@@ -1,4 +1,6 @@
-import type { Project } from '../../types';
+import { logout, useAuthUser } from '../../lib/auth';
+import { useTestRole } from '../../lib/testRole';
+import { ACCESS_LEVEL_LABELS, type AccessLevel, type Project } from '../../types';
 
 export type PlanningView =
   | 'charge'
@@ -29,7 +31,12 @@ const SECTIONS: { label: string; view: PlanningView }[] = [
   { label: 'Équipe', view: 'equipe' },
 ];
 
+const ACCESS_LEVELS: AccessLevel[] = ['admin', 'responsable', 'user'];
+
 export function NavRail({ projects, pendingRequestCount, onOpenRequests, activeView, onNavigate }: NavRailProps) {
+  const { user } = useAuthUser();
+  const { role, setRole } = useTestRole();
+
   return (
     <nav className="pdc-rail">
       <div className="nav-brand" style={{ padding: '0 var(--space-2)' }}>
@@ -66,6 +73,32 @@ export function NavRail({ projects, pendingRequestCount, onOpenRequests, activeV
             {project.name}
           </div>
         ))}
+      </div>
+
+      <div className="pdc-rail-account">
+        <div className="pdc-rail-account-email" title={user?.email ?? undefined}>
+          {user?.displayName || user?.email}
+        </div>
+        <div>
+          <label className="pdc-rail-testrole-label" htmlFor="test-role-select">
+            Rôle de test
+          </label>
+          <select
+            id="test-role-select"
+            className="input"
+            value={role}
+            onChange={(e) => setRole(e.target.value as AccessLevel)}
+          >
+            {ACCESS_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {ACCESS_LEVEL_LABELS[level]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button type="button" className="btn btn-secondary btn-block" onClick={() => logout().catch(console.error)}>
+          Se déconnecter
+        </button>
       </div>
     </nav>
   );
