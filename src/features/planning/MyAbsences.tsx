@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { formatFullDate, fromISODate } from '../../lib/dates';
 import { createRequest } from '../../lib/repository';
+import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 import {
   ABSENCE_LABELS,
   REQUESTABLE_ABSENCE_TYPES,
@@ -28,7 +29,10 @@ const STATUS_TAG_CLASS: Record<RequestStatus, string> = {
 };
 
 export function MyAbsences({ people, requests }: MyAbsencesProps) {
-  const [personId, setPersonId] = useState(() => people[0]?.id ?? '');
+  const { role, personId: testPersonId } = useTestRole();
+  const isPersonalized = role === 'user';
+  const [pickedPersonId, setPickedPersonId] = useState(() => people[0]?.id ?? '');
+  const personId = isPersonalized ? resolveTestPersonId(testPersonId, people) : pickedPersonId;
   const [type, setType] = useState<AbsenceType>('conge');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -70,18 +74,20 @@ export function MyAbsences({ people, requests }: MyAbsencesProps) {
         <div className="pdc-header-rule-thin" />
       </header>
 
-      <div className="pdc-toolbar">
-        <div className="field" style={{ marginBottom: 0 }}>
-          <select className="input" value={personId} onChange={(e) => setPersonId(e.target.value)} style={{ width: 260 }}>
-            {people.length === 0 && <option value="">Aucune ressource</option>}
-            {people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} — {p.role}
-              </option>
-            ))}
-          </select>
+      {!isPersonalized && (
+        <div className="pdc-toolbar">
+          <div className="field" style={{ marginBottom: 0 }}>
+            <select className="input" value={pickedPersonId} onChange={(e) => setPickedPersonId(e.target.value)} style={{ width: 260 }}>
+              {people.length === 0 && <option value="">Aucune ressource</option>}
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} — {p.role}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
+      )}
 
       {!person ? (
         <p className="text-muted">Aucune ressource disponible.</p>

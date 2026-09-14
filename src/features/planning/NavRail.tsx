@@ -1,6 +1,6 @@
 import { logout, useAuthUser } from '../../lib/auth';
 import { useTestRole } from '../../lib/testRole';
-import { ACCESS_LEVEL_LABELS, type AccessLevel, type Project } from '../../types';
+import { ACCESS_LEVEL_LABELS, type AccessLevel, type Person, type Project } from '../../types';
 
 export type PlanningView =
   | 'charge'
@@ -14,15 +14,16 @@ export type PlanningView =
 
 interface NavRailProps {
   projects: Project[];
+  people: Person[];
   pendingRequestCount: number;
   onOpenRequests: () => void;
   activeView: PlanningView;
   onNavigate: (view: PlanningView) => void;
 }
 
-const SECTIONS: { label: string; view: PlanningView; financialOnly?: boolean }[] = [
-  { label: 'Plan de charge', view: 'charge' },
-  { label: 'Plan de production', view: 'production' },
+const SECTIONS: { label: string; view: PlanningView; financialOnly?: boolean; hiddenForUser?: boolean }[] = [
+  { label: 'Plan de charge', view: 'charge', hiddenForUser: true },
+  { label: 'Plan de production', view: 'production', hiddenForUser: true },
   { label: 'Semainier', view: 'semainier' },
   { label: 'Timesheets', view: 'timesheets' },
   { label: 'Affectation des permanents', view: 'affectation', financialOnly: true },
@@ -33,11 +34,13 @@ const SECTIONS: { label: string; view: PlanningView; financialOnly?: boolean }[]
 
 const ACCESS_LEVELS: AccessLevel[] = ['admin', 'responsable', 'user'];
 
-export function NavRail({ projects, pendingRequestCount, onOpenRequests, activeView, onNavigate }: NavRailProps) {
+export function NavRail({ projects, people, pendingRequestCount, onOpenRequests, activeView, onNavigate }: NavRailProps) {
   const { user } = useAuthUser();
-  const { role, setRole } = useTestRole();
+  const { role, setRole, personId, setPersonId } = useTestRole();
   const canSeeFinancials = role !== 'user';
-  const visibleSections = SECTIONS.filter((section) => !section.financialOnly || canSeeFinancials);
+  const visibleSections = SECTIONS.filter(
+    (section) => (!section.financialOnly || canSeeFinancials) && (!section.hiddenForUser || role !== 'user'),
+  );
 
   return (
     <nav className="pdc-rail">
@@ -98,6 +101,21 @@ export function NavRail({ projects, pendingRequestCount, onOpenRequests, activeV
             ))}
           </select>
         </div>
+        {role === 'user' && (
+          <div>
+            <label className="pdc-rail-testrole-label" htmlFor="test-person-select">
+              Se connecter en tant que
+            </label>
+            <select id="test-person-select" className="input" value={personId} onChange={(e) => setPersonId(e.target.value)}>
+              {people.length === 0 && <option value="">Aucune ressource</option>}
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <button type="button" className="btn btn-secondary btn-block" onClick={() => logout().catch(console.error)}>
           Se déconnecter
         </button>

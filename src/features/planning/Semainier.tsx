@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { deleteBooking, setBookingDayNote, updateBookingDates } from '../../lib/repository';
+import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 import type { Booking, Person, Project, ZoomLevel } from '../../types';
 import { BookingPopover } from './BookingPopover';
 import { CalendarGrid } from './CalendarGrid';
@@ -21,10 +22,13 @@ const ZOOM_OPTIONS: { value: ZoomLevel; label: string }[] = [
 ];
 
 export function Semainier({ people, projects, bookings }: SemainierProps) {
-  const [personId, setPersonId] = useState<string>(() => people[0]?.id ?? '');
+  const { role, personId: testPersonId } = useTestRole();
+  const isPersonalized = role === 'user';
+  const [pickedPersonId, setPickedPersonId] = useState<string>(() => people[0]?.id ?? '');
   const [anchor, setAnchor] = useState(() => new Date());
   const [zoom, setZoom] = useState<ZoomLevel>('semaine');
 
+  const personId = isPersonalized ? resolveTestPersonId(testPersonId, people) : pickedPersonId;
   const person = people.find((p) => p.id === personId);
   const selectedPeople = useMemo(() => (person ? [person] : []), [person]);
   const units = useMemo(() => buildUnits(anchor, zoom), [anchor, zoom]);
@@ -49,26 +53,29 @@ export function Semainier({ people, projects, bookings }: SemainierProps) {
   return (
     <main className="pdc-main">
       <header className="pdc-header">
-        <h1>Semainier</h1>
+        <h1>{isPersonalized ? 'Mon semainier' : 'Semainier'}</h1>
         <p className="text-muted">
-          Ce qu'une ressource est amenée à travailler, semaine par semaine. Réservé aux chargés de production et à la
-          direction — voir le README concernant les droits d'accès, pas encore appliqués côté serveur.
+          {isPersonalized
+            ? 'Ce que vous êtes amené·e à travailler, semaine par semaine.'
+            : "Ce qu'une ressource est amenée à travailler, semaine par semaine. Réservé aux chargés de production et à la direction — voir le README concernant les droits d'accès, pas encore appliqués côté serveur."}
         </p>
         <div className="pdc-header-rule-thick" />
         <div className="pdc-header-rule-thin" />
       </header>
 
       <div className="pdc-toolbar">
-        <div className="field" style={{ marginBottom: 0 }}>
-          <select className="input" value={personId} onChange={(e) => setPersonId(e.target.value)} style={{ width: 260 }}>
-            {people.length === 0 && <option value="">Aucune ressource</option>}
-            {people.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} — {p.role}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!isPersonalized && (
+          <div className="field" style={{ marginBottom: 0 }}>
+            <select className="input" value={pickedPersonId} onChange={(e) => setPickedPersonId(e.target.value)} style={{ width: 260 }}>
+              {people.length === 0 && <option value="">Aucune ressource</option>}
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} — {p.role}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="pdc-time-nav">
           <button type="button" className="btn btn-icon btn-secondary" onClick={() => setAnchor((a) => shiftAnchor(a, zoom, -1))} aria-label="Précédent">

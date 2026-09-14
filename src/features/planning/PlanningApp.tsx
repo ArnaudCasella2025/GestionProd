@@ -10,6 +10,7 @@ import {
   useRequests,
   useTimesheets,
 } from '../../lib/repository';
+import { useTestRole } from '../../lib/testRole';
 import { Equipe } from './Equipe';
 import { MyAbsences } from './MyAbsences';
 import { NavRail, type PlanningView } from './NavRail';
@@ -21,7 +22,10 @@ import { RequestsModal } from './RequestsModal';
 import { Semainier } from './Semainier';
 import { Timesheets } from './Timesheets';
 
+const HIDDEN_FOR_USER: PlanningView[] = ['charge', 'production'];
+
 export function PlanningApp() {
+  const { role } = useTestRole();
   const { data: people, loading: peopleLoading } = usePeople();
   const { data: projects } = useProjects();
   const { data: bookings } = useBookings();
@@ -32,6 +36,7 @@ export function PlanningApp() {
 
   const [view, setView] = useState<PlanningView>('charge');
   const [requestsOpen, setRequestsOpen] = useState(false);
+  const effectiveView = role === 'user' && HIDDEN_FOR_USER.includes(view) ? 'semainier' : view;
 
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const pendingRequestCount = requests.filter((r) => r.status === 'pending').length;
@@ -40,19 +45,20 @@ export function PlanningApp() {
     <div className="pdc-layout">
       <NavRail
         projects={projects}
+        people={people}
         pendingRequestCount={pendingRequestCount}
         onOpenRequests={() => setRequestsOpen(true)}
-        activeView={view}
+        activeView={effectiveView}
         onNavigate={setView}
       />
 
-      {view === 'charge' && (
+      {effectiveView === 'charge' && (
         <PlanDeCharge people={people} peopleLoading={peopleLoading} projects={projects} bookings={bookings} />
       )}
-      {view === 'production' && <PlanDeProduction people={people} projects={projects} bookings={bookings} />}
-      {view === 'semainier' && <Semainier people={people} projects={projects} bookings={bookings} />}
-      {view === 'timesheets' && <Timesheets people={people} projects={projects} timesheets={timesheets} />}
-      {view === 'affectation' && (
+      {effectiveView === 'production' && <PlanDeProduction people={people} projects={projects} bookings={bookings} />}
+      {effectiveView === 'semainier' && <Semainier people={people} projects={projects} bookings={bookings} />}
+      {effectiveView === 'timesheets' && <Timesheets people={people} projects={projects} timesheets={timesheets} />}
+      {effectiveView === 'affectation' && (
         <PermanentAllocations
           people={people}
           projects={projects}
@@ -61,9 +67,9 @@ export function PlanningApp() {
           allocationOverrides={allocationOverrides}
         />
       )}
-      {view === 'absences' && <MyAbsences people={people} requests={requests} />}
-      {view === 'projets' && <Projects projects={projects} bookings={bookings} people={people} />}
-      {view === 'equipe' && <Equipe people={people} holidays={holidays} />}
+      {effectiveView === 'absences' && <MyAbsences people={people} requests={requests} />}
+      {effectiveView === 'projets' && <Projects projects={projects} bookings={bookings} people={people} />}
+      {effectiveView === 'equipe' && <Equipe people={people} holidays={holidays} />}
 
       {requestsOpen && (
         <RequestsModal

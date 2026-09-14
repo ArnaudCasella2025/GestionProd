@@ -120,6 +120,28 @@ export function computeProjectBudget(
   return { consumed, projected, status, ratio };
 }
 
+/** Share of a project's booked jours-homme already in the past, as a 0-100
+ * percentage — a workload-based "avancement" that doesn't rely on cost/budget,
+ * so it's safe to show regardless of financial-data visibility. */
+export function computeProjectProgress(project: Project, bookings: Booking[]): number {
+  const todayIso = toISODate(new Date());
+  const relevant = projectBookingsFor(bookings, project.id);
+  let doneDays = 0;
+  let totalDays = 0;
+  for (const booking of relevant) {
+    const start = fromISODate(booking.startDate);
+    const end = fromISODate(booking.endDate);
+    for (let d = start; d <= end; d = addDays(d, 1)) {
+      const iso = toISODate(d);
+      const frac = dayFraction(booking, iso);
+      totalDays += frac;
+      if (iso <= todayIso) doneDays += frac;
+    }
+  }
+  if (totalDays === 0) return 0;
+  return Math.min(100, Math.round((doneDays / totalDays) * 100));
+}
+
 export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
   sous_controle: 'Sous contrôle',
   tendu: 'Tendu',
