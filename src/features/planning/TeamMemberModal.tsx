@@ -37,11 +37,10 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
   const [rttPerYear, setRttPerYear] = useState(String(initial?.rttPerYear ?? DEFAULT_RTT_PER_YEAR));
   const [salaryHistory, setSalaryHistory] = useState<SalaryRecord[]>(initial?.salaryHistory ?? []);
 
-  const [recordDate, setRecordDate] = useState('');
+  const todayIso = toISODate(new Date());
+  const [recordDate, setRecordDate] = useState(todayIso);
   const [recordGross, setRecordGross] = useState('');
   const [recordCharges, setRecordCharges] = useState('');
-
-  const todayIso = toISODate(new Date());
   const hasSalaryHistory = salaryHistory.length > 0;
   // Falls back to the person's last known rate if every salary record is dated
   // in the future (nothing is effective yet as of today).
@@ -75,7 +74,7 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
     const record: SalaryRecord = { startDate: recordDate, grossMonthlySalary: recordGrossNumber, chargesPercent: recordChargesNumber };
     // Replace any existing record for the same date, to allow correcting a mistake.
     setSalaryHistory((history) => [...history.filter((r) => r.startDate !== recordDate), record]);
-    setRecordDate('');
+    setRecordDate(todayIso);
     setRecordGross('');
     setRecordCharges('');
   }
