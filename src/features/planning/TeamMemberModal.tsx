@@ -52,14 +52,13 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
 
   const congesNumber = Number(congesPerYear);
   const rttNumber = Number(rttPerYear);
-  const isValid =
+  const otherFieldsValid =
     name.trim().length > 0 &&
-    effectiveRate != null &&
-    effectiveRate > 0 &&
     Number.isFinite(congesNumber) &&
     congesNumber >= 0 &&
     Number.isFinite(rttNumber) &&
     rttNumber >= 0;
+  const isValid = otherFieldsValid && effectiveRate != null && effectiveRate > 0;
 
   const recordGrossNumber = Number(recordGross);
   const recordChargesNumber = Number(recordCharges);
@@ -69,6 +68,11 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
     recordGrossNumber > 0 &&
     Number.isFinite(recordChargesNumber) &&
     recordChargesNumber >= 0;
+
+  // A filled-in but not-yet-added salary row shouldn't block saving — it's
+  // easy to miss that "Ajouter" (for the row) is a separate click from
+  // "Ajouter"/"Enregistrer" (for the whole member). Submitting folds it in.
+  const canSubmit = isValid || (otherFieldsValid && canAddRecord);
 
   function addRecord() {
     if (!canAddRecord) return;
@@ -86,15 +90,23 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!isValid) return;
+    if (!canSubmit) return;
+    const finalHistory = canAddRecord
+      ? [
+          ...salaryHistory.filter((r) => r.startDate !== recordDate),
+          { startDate: recordDate, grossMonthlySalary: recordGrossNumber, chargesPercent: recordChargesNumber },
+        ]
+      : salaryHistory;
+    const finalRate = finalHistory.length > 0 ? dailyRateOn(finalHistory, todayIso, legacyRate ?? 0) : effectiveRate;
+    if (finalRate == null || finalRate <= 0) return;
     onSave({
       name: name.trim(),
       role,
-      dailyRate: effectiveRate!,
+      dailyRate: finalRate,
       accessLevel,
       congesPerYear: congesNumber,
       rttPerYear: rttNumber,
-      salaryHistory,
+      salaryHistory: finalHistory,
     });
   };
 
@@ -252,7 +264,7 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
           <button type="button" className="btn btn-secondary" onClick={onClose}>
             Annuler
           </button>
-          <button type="submit" className="btn btn-primary" disabled={!isValid}>
+          <button type="submit" className="btn btn-primary" disabled={!canSubmit}>
             {initial ? 'Enregistrer' : 'Ajouter'}
           </button>
         </div>
