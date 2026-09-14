@@ -2,6 +2,7 @@ import type { CSSProperties, MouseEvent } from 'react';
 import type { Booking, Person, Project } from '../../types';
 import { bookingLabel } from './calc';
 import { groupByMonth, splitAtWeekends, unitRangeForDates, type TimeUnit } from './timeUnits';
+import { useTestRole } from '../../lib/testRole';
 
 export interface DragSelection {
   rowA: number;
@@ -37,6 +38,8 @@ export function CalendarGrid({
   onCellMouseUp,
   onBookingClick,
 }: CalendarGridProps) {
+  const { role } = useTestRole();
+  const canSeeFinancials = role !== 'user';
   const monthGroups = groupByMonth(units);
   const totalWidth = units.reduce((sum, u) => sum + u.widthPx, 0);
   const todayIdx = units.findIndex((u) => u.isToday);
@@ -56,7 +59,7 @@ export function CalendarGrid({
           <div className="pdc-resource-row" key={person.id} style={{ height: ROW_HEIGHT }}>
             <div className="pdc-resource-name">{person.name}</div>
             <div className="pdc-resource-meta">
-              {person.role} · {person.dailyRate}€/j
+              {canSeeFinancials ? `${person.role} · ${person.dailyRate}€/j` : person.role}
             </div>
           </div>
         ))}

@@ -21,6 +21,7 @@ const ACCESS_TAG_CLASS: Record<string, string> = {
 export function Equipe({ people, holidays }: EquipeProps) {
   const { role } = useTestRole();
   const isAdmin = role === 'admin';
+  const canSeeFinancials = role !== 'user';
   const [modal, setModal] = useState<ModalState>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [holidayDate, setHolidayDate] = useState('');
@@ -66,7 +67,7 @@ export function Equipe({ people, holidays }: EquipeProps) {
             <tr>
               <th>Nom</th>
               <th>Poste</th>
-              <th>TJM</th>
+              {canSeeFinancials && <th>TJM</th>}
               <th>Droits</th>
               {isAdmin && <th />}
             </tr>
@@ -78,7 +79,7 @@ export function Equipe({ people, holidays }: EquipeProps) {
                 <tr key={person.id}>
                   <td>{person.name}</td>
                   <td>{person.role}</td>
-                  <td>{person.dailyRate.toLocaleString('fr-FR')} €/j</td>
+                  {canSeeFinancials && <td>{person.dailyRate.toLocaleString('fr-FR')} €/j</td>}
                   <td>
                     <span className={`tag ${ACCESS_TAG_CLASS[accessLevel]}`}>{ACCESS_LEVEL_LABELS[accessLevel]}</span>
                   </td>

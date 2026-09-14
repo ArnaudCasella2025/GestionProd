@@ -20,12 +20,12 @@ interface NavRailProps {
   onNavigate: (view: PlanningView) => void;
 }
 
-const SECTIONS: { label: string; view: PlanningView }[] = [
+const SECTIONS: { label: string; view: PlanningView; financialOnly?: boolean }[] = [
   { label: 'Plan de charge', view: 'charge' },
   { label: 'Plan de production', view: 'production' },
   { label: 'Semainier', view: 'semainier' },
   { label: 'Timesheets', view: 'timesheets' },
-  { label: 'Affectation des permanents', view: 'affectation' },
+  { label: 'Affectation des permanents', view: 'affectation', financialOnly: true },
   { label: 'Mes absences', view: 'absences' },
   { label: 'Projets', view: 'projets' },
   { label: 'Équipe', view: 'equipe' },
@@ -36,6 +36,8 @@ const ACCESS_LEVELS: AccessLevel[] = ['admin', 'responsable', 'user'];
 export function NavRail({ projects, pendingRequestCount, onOpenRequests, activeView, onNavigate }: NavRailProps) {
   const { user } = useAuthUser();
   const { role, setRole } = useTestRole();
+  const canSeeFinancials = role !== 'user';
+  const visibleSections = SECTIONS.filter((section) => !section.financialOnly || canSeeFinancials);
 
   return (
     <nav className="pdc-rail">
@@ -49,7 +51,7 @@ export function NavRail({ projects, pendingRequestCount, onOpenRequests, activeV
       </button>
 
       <ul className="pdc-rail-sections">
-        {SECTIONS.map((section) => (
+        {visibleSections.map((section) => (
           <li key={section.view}>
             <a
               href="#"

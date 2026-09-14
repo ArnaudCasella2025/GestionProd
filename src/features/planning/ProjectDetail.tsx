@@ -1,6 +1,7 @@
 import type { Booking, Person, Project } from '../../types';
 import { PROJECT_STATUS_LABEL, computeProjectBudget, peopleForProject, projectDateRange } from './calc';
 import { formatFullDate, fromISODate } from '../../lib/dates';
+import { useTestRole } from '../../lib/testRole';
 
 interface ProjectDetailProps {
   project: Project;
@@ -17,6 +18,8 @@ const STATUS_TAG_CLASS: Record<string, string> = {
 };
 
 export function ProjectDetail({ project, bookings, people, onBack, onEdit }: ProjectDetailProps) {
+  const { role } = useTestRole();
+  const canSeeFinancials = role !== 'user';
   const { consumed, projected, status, ratio } = computeProjectBudget(project, bookings, people);
   const consumedPct = project.budget > 0 ? Math.min((consumed / project.budget) * 100, 100) : 0;
   const projectedPct = project.budget > 0 ? Math.min((projected / project.budget) * 100, 100) : 0;
@@ -41,25 +44,27 @@ export function ProjectDetail({ project, bookings, people, onBack, onEdit }: Pro
 
       {project.description && <p>{project.description}</p>}
 
-      <section>
-        <h3>Budget</h3>
-        <span className={`tag ${STATUS_TAG_CLASS[status]}`} style={{ width: 'fit-content' }}>
-          {PROJECT_STATUS_LABEL[status]}
-        </span>
-        <div className="pdc-progress" style={{ marginTop: 'var(--space-2)' }}>
-          <div className="pdc-progress-track">
-            <div className="pdc-progress-projected" style={{ width: `${projectedPct}%` }} />
-            <div className="pdc-progress-real" style={{ width: `${consumedPct}%` }} />
-          </div>
-        </div>
-        <div className="card-meta" style={{ marginTop: 'var(--space-1)' }}>
-          <span>
-            {(consumed / 1000).toFixed(1)} k€ réel · {(projected / 1000).toFixed(1)} k€ projeté
+      {canSeeFinancials && (
+        <section>
+          <h3>Budget</h3>
+          <span className={`tag ${STATUS_TAG_CLASS[status]}`} style={{ width: 'fit-content' }}>
+            {PROJECT_STATUS_LABEL[status]}
           </span>
-          <span>/ {(project.budget / 1000).toFixed(0)} k€ budget</span>
-        </div>
-        {ratio > 1 && <div className="pdc-overrun">Dépassement de {Math.round((ratio - 1) * 100)} %</div>}
-      </section>
+          <div className="pdc-progress" style={{ marginTop: 'var(--space-2)' }}>
+            <div className="pdc-progress-track">
+              <div className="pdc-progress-projected" style={{ width: `${projectedPct}%` }} />
+              <div className="pdc-progress-real" style={{ width: `${consumedPct}%` }} />
+            </div>
+          </div>
+          <div className="card-meta" style={{ marginTop: 'var(--space-1)' }}>
+            <span>
+              {(consumed / 1000).toFixed(1)} k€ réel · {(projected / 1000).toFixed(1)} k€ projeté
+            </span>
+            <span>/ {(project.budget / 1000).toFixed(0)} k€ budget</span>
+          </div>
+          {ratio > 1 && <div className="pdc-overrun">Dépassement de {Math.round((ratio - 1) * 100)} %</div>}
+        </section>
+      )}
 
       <section>
         <h3>Ressources affectées</h3>
@@ -76,7 +81,7 @@ export function ProjectDetail({ project, bookings, people, onBack, onEdit }: Pro
               <tr>
                 <th>Nom</th>
                 <th>Poste</th>
-                <th>TJM</th>
+                {canSeeFinancials && <th>TJM</th>}
               </tr>
             </thead>
             <tbody>
@@ -84,7 +89,7 @@ export function ProjectDetail({ project, bookings, people, onBack, onEdit }: Pro
                 <tr key={person.id}>
                   <td>{person.name}</td>
                   <td>{person.role}</td>
-                  <td>{person.dailyRate.toLocaleString('fr-FR')} €/j</td>
+                  {canSeeFinancials && <td>{person.dailyRate.toLocaleString('fr-FR')} €/j</td>}
                 </tr>
               ))}
             </tbody>
@@ -92,11 +97,13 @@ export function ProjectDetail({ project, bookings, people, onBack, onEdit }: Pro
         )}
       </section>
 
-      <div>
-        <button type="button" className="btn btn-secondary" onClick={onEdit}>
-          Modifier le projet
-        </button>
-      </div>
+      {canSeeFinancials && (
+        <div>
+          <button type="button" className="btn btn-secondary" onClick={onEdit}>
+            Modifier le projet
+          </button>
+        </div>
+      )}
     </main>
   );
 }

@@ -3,6 +3,7 @@ import { addDays, formatDayLabel, fromISODate, isWeekend, toISODate } from '../.
 import type { Booking, DayHalf, Person, Project } from '../../types';
 import { bookingLabel, coveredHalves } from './calc';
 import { usePopoverPosition } from './usePopoverPosition';
+import { useTestRole } from '../../lib/testRole';
 
 interface DetailPanelProps {
   x: number;
@@ -37,6 +38,8 @@ function durationDays(startDate: string, endDate: string, startHalf: DayHalf, en
 }
 
 export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveDates, onSaveDayNote }: DetailPanelProps) {
+  const { role } = useTestRole();
+  const canSeeFinancials = role !== 'user';
   const [startDate, setStartDate] = useState(booking.startDate);
   const [endDate, setEndDate] = useState(booking.endDate);
   const [startHalf, setStartHalf] = useState<DayHalf>(booking.startHalf ?? 'AM');
@@ -156,7 +159,7 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
           </>
         ))}
 
-      {project && !invalidRange && (
+      {project && !invalidRange && canSeeFinancials && (
         <div className="pdc-detail-row">
           <span className="text-muted">Coût</span>
           <span>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { toISODate } from '../../lib/dates';
 import { deleteAllocationOverride, setAllocationOverride } from '../../lib/repository';
+import { useTestRole } from '../../lib/testRole';
 import type { AllocationOverride, Booking, Person, Project, TimesheetDay } from '../../types';
 import { bookedCostInMonth, bookedDaysInMonth, realCostInMonth, realDaysInMonth } from './allocationCalc';
 
@@ -41,6 +42,7 @@ const MONTH_STATUS_TAG_CLASS: Record<MonthStatus, string> = {
 };
 
 export function PermanentAllocations({ people, projects, bookings, timesheets, allocationOverrides }: PermanentAllocationsProps) {
+  const { role } = useTestRole();
   const [personId, setPersonId] = useState(() => people[0]?.id ?? '');
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [unit, setUnit] = useState<Unit>('jours');
@@ -119,6 +121,19 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
       }
     }
     setEditingCell(null);
+  }
+
+  if (role === 'user') {
+    return (
+      <main className="pdc-main">
+        <header className="pdc-header">
+          <h1>Affectation des permanents</h1>
+          <p className="text-muted">Accès réservé à l'administration et à la direction de production.</p>
+          <div className="pdc-header-rule-thick" />
+          <div className="pdc-header-rule-thin" />
+        </header>
+      </main>
+    );
   }
 
   return (
