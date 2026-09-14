@@ -1,16 +1,23 @@
 import { useState, type FormEvent } from 'react';
-import { authErrorMessage, login } from '../../lib/auth';
+import { authErrorMessage, debugLogin, login } from '../../lib/auth';
+import { useTestRole } from '../../lib/testRole';
+import { ACCESS_LEVEL_LABELS, type AccessLevel } from '../../types';
 
 interface LoginPageProps {
   onSwitchToSignup: () => void;
   onSwitchToForgot: () => void;
 }
 
+const ACCESS_LEVELS: AccessLevel[] = ['admin', 'responsable', 'user'];
+
 export function LoginPage({ onSwitchToSignup, onSwitchToForgot }: LoginPageProps) {
+  const { setRole } = useTestRole();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [debugRole, setDebugRole] = useState<AccessLevel>('admin');
+  const [debugSubmitting, setDebugSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -22,6 +29,19 @@ export function LoginPage({ onSwitchToSignup, onSwitchToForgot }: LoginPageProps
       setError(authErrorMessage(err));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDebugLogin() {
+    setError(null);
+    setDebugSubmitting(true);
+    try {
+      await debugLogin(debugRole);
+      setRole(debugRole);
+    } catch (err) {
+      setError(authErrorMessage(err));
+    } finally {
+      setDebugSubmitting(false);
     }
   }
 
@@ -68,6 +88,27 @@ export function LoginPage({ onSwitchToSignup, onSwitchToForgot }: LoginPageProps
           <button type="button" className="btn-ghost" onClick={onSwitchToSignup}>
             Créer un compte
           </button>
+        </div>
+
+        <div className="auth-debug">
+          <div className="auth-debug-label">Connexion de test (debug)</div>
+          <div className="auth-debug-row">
+            <select
+              className="input"
+              value={debugRole}
+              onChange={(e) => setDebugRole(e.target.value as AccessLevel)}
+              aria-label="Droits pour la connexion de test"
+            >
+              {ACCESS_LEVELS.map((level) => (
+                <option key={level} value={level}>
+                  {ACCESS_LEVEL_LABELS[level]}
+                </option>
+              ))}
+            </select>
+            <button type="button" className="btn btn-secondary" onClick={handleDebugLogin} disabled={debugSubmitting}>
+              {debugSubmitting ? 'Connexion…' : 'Connexion debug'}
+            </button>
+          </div>
         </div>
       </form>
     </div>
