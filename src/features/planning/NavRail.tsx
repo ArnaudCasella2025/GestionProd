@@ -101,7 +101,7 @@ export function NavRail({ projects, people, pendingRequestCount, onOpenRequests,
             ))}
           </select>
         </div>
-        {role === 'user' && (
+        {(role === 'user' || role === 'responsable') && (
           <div>
             <label className="pdc-rail-testrole-label" htmlFor="test-person-select">
               Se connecter en tant que

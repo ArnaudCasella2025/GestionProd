@@ -1,6 +1,14 @@
 import { addDays, fromISODate, toISODate } from '../../lib/dates';
-import { ABSENCE_LABELS, type Booking, type DayHalf, type Person, type Project, type ProjectStatus } from '../../types';
+import { ABSENCE_LABELS, type AccessLevel, type Booking, type DayHalf, type Person, type Project, type ProjectStatus } from '../../types';
 import { dailyRateOn } from './salaryCalc';
+
+/** Admin can modify any project; Responsable only the project(s) they're
+ * assigned to as responsable; User never. */
+export function canManageProject(project: Project, role: AccessLevel, personId: string): boolean {
+  if (role === 'admin') return true;
+  if (role === 'responsable') return Boolean(project.responsableId) && project.responsableId === personId;
+  return false;
+}
 
 export function projectBookingsFor(bookings: Booking[], projectId: string): Booking[] {
   return bookings.filter((b) => b.projectId === projectId);

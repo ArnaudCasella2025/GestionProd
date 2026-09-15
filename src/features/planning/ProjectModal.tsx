@@ -1,19 +1,24 @@
 import { useState, type FormEvent } from 'react';
-import type { Project } from '../../types';
+import type { Person, Project } from '../../types';
 
 interface ProjectModalProps {
   /** Present when editing an existing project; absent when creating a new one. */
   initial?: Project;
-  onSave: (data: { name: string; client: string; color: string; budget: number; description: string }) => void;
+  /** Pre-selected responsable when creating a new project (e.g. the
+   * Responsable creating it, so they own it by default). Ignored when editing. */
+  defaultResponsableId?: string;
+  people: Person[];
+  onSave: (data: { name: string; client: string; color: string; budget: number; description: string; responsableId?: string }) => void;
   onClose: () => void;
 }
 
-export function ProjectModal({ initial, onSave, onClose }: ProjectModalProps) {
+export function ProjectModal({ initial, defaultResponsableId, people, onSave, onClose }: ProjectModalProps) {
   const [name, setName] = useState(initial?.name ?? '');
   const [client, setClient] = useState(initial?.client ?? '');
   const [color, setColor] = useState(initial?.color ?? '#0088b0');
   const [budget, setBudget] = useState(String(initial?.budget ?? ''));
   const [description, setDescription] = useState(initial?.description ?? '');
+  const [responsableId, setResponsableId] = useState(initial?.responsableId ?? defaultResponsableId ?? '');
 
   const budgetNumber = Number(budget);
   const isValid = name.trim().length > 0 && budget.trim().length > 0 && Number.isFinite(budgetNumber) && budgetNumber > 0;
@@ -21,7 +26,14 @@ export function ProjectModal({ initial, onSave, onClose }: ProjectModalProps) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
-    onSave({ name: name.trim(), client: client.trim(), color, budget: budgetNumber, description: description.trim() });
+    onSave({
+      name: name.trim(),
+      client: client.trim(),
+      color,
+      budget: budgetNumber,
+      description: description.trim(),
+      responsableId: responsableId || undefined,
+    });
   };
 
   return (
@@ -37,6 +49,18 @@ export function ProjectModal({ initial, onSave, onClose }: ProjectModalProps) {
         <div className="field">
           <label htmlFor="project-client">Financeur</label>
           <input id="project-client" className="input" value={client} onChange={(e) => setClient(e.target.value)} />
+        </div>
+
+        <div className="field">
+          <label htmlFor="project-responsable">Responsable</label>
+          <select id="project-responsable" className="input" value={responsableId} onChange={(e) => setResponsableId(e.target.value)}>
+            <option value="">Non assigné</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="field">

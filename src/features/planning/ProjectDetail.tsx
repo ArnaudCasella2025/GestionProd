@@ -1,7 +1,7 @@
 import type { Booking, Person, Project } from '../../types';
-import { PROJECT_STATUS_LABEL, computeProjectBudget, peopleForProject, projectDateRange } from './calc';
+import { PROJECT_STATUS_LABEL, canManageProject, computeProjectBudget, peopleForProject, projectDateRange } from './calc';
 import { formatFullDate, fromISODate } from '../../lib/dates';
-import { useTestRole } from '../../lib/testRole';
+import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 
 interface ProjectDetailProps {
   project: Project;
@@ -18,8 +18,11 @@ const STATUS_TAG_CLASS: Record<string, string> = {
 };
 
 export function ProjectDetail({ project, bookings, people, onBack, onEdit }: ProjectDetailProps) {
-  const { role } = useTestRole();
+  const { role, personId } = useTestRole();
   const canSeeFinancials = role !== 'user';
+  const testPersonId = resolveTestPersonId(personId, people);
+  const canManage = canManageProject(project, role, testPersonId);
+  const responsable = project.responsableId ? people.find((p) => p.id === project.responsableId) : undefined;
   const { consumed, projected, status, ratio } = computeProjectBudget(project, bookings, people);
   const consumedPct = project.budget > 0 ? Math.min((consumed / project.budget) * 100, 100) : 0;
   const projectedPct = project.budget > 0 ? Math.min((projected / project.budget) * 100, 100) : 0;
@@ -38,6 +41,7 @@ export function ProjectDetail({ project, bookings, people, onBack, onEdit }: Pro
           <h1>{project.name}</h1>
         </div>
         <p className="text-muted">{project.client || 'Financeur non renseigné'}</p>
+        <p className="text-muted">Responsable : {responsable?.name ?? 'non assigné'}</p>
         <div className="pdc-header-rule-thick" />
         <div className="pdc-header-rule-thin" />
       </header>
@@ -97,7 +101,7 @@ export function ProjectDetail({ project, bookings, people, onBack, onEdit }: Pro
         )}
       </section>
 
-      {canSeeFinancials && (
+      {canManage && (
         <div>
           <button type="button" className="btn btn-secondary" onClick={onEdit}>
             Modifier le projet

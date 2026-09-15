@@ -84,6 +84,10 @@ export interface Project {
   color: string;
   budget: number;
   description?: string;
+  /** Person.id of the team member responsible for this project — the only
+   * non-admin allowed to modify it. Unset means no responsable assigned yet
+   * (only Admin can modify until one is set). */
+  responsableId?: string;
 }
 
 export type DayHalf = 'AM' | 'PM';
