@@ -143,6 +143,7 @@ export function Semainier({ people, projects, bookings }: SemainierProps) {
             booking={detailPanel.booking}
             person={person}
             project={detailProject}
+            canManage={role !== 'responsable' || !detailProject || canManageProject(detailProject, role, responsablePersonId)}
             onRelease={() => {
               deleteBooking(detailPanel.booking.id).catch(console.error);
               setDetailPanel(null);

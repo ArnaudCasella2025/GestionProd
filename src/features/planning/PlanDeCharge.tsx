@@ -221,6 +221,7 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
             booking={detailPanel.booking}
             person={detailPerson}
             project={detailProject}
+            canManage={role !== 'responsable' || !detailProject || canManageProject(detailProject, role, testPersonId)}
             onRelease={() => {
               deleteBooking(detailPanel.booking.id).catch(console.error);
               setDetailPanel(null);

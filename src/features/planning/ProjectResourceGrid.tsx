@@ -101,6 +101,7 @@ export function ProjectResourceGrid({
             booking={detailPanel.booking}
             person={detailPerson}
             project={detailProject}
+            canManage={canBook}
             onRelease={() => {
               deleteBooking(detailPanel.booking.id).catch(console.error);
               setDetailPanel(null);

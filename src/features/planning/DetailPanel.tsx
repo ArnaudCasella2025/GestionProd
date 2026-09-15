@@ -11,6 +11,9 @@ interface DetailPanelProps {
   booking: Booking;
   person: Person | undefined;
   project: Project | undefined;
+  /** False for a Responsable viewing a booking on a project they don't
+   * manage — the panel becomes read-only (no date/note edits, no release). */
+  canManage: boolean;
   onRelease: () => void;
   onSaveDates: (startDate: string, endDate: string, startHalf: DayHalf, endHalf: DayHalf) => void;
   onSaveDayNote: (date: string, note: string) => void;
@@ -37,7 +40,7 @@ function durationDays(startDate: string, endDate: string, startHalf: DayHalf, en
   return total;
 }
 
-export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveDates, onSaveDayNote }: DetailPanelProps) {
+export function DetailPanel({ x, y, booking, person, project, canManage, onRelease, onSaveDates, onSaveDayNote }: DetailPanelProps) {
   const { role } = useTestRole();
   const canSeeFinancials = role !== 'user';
   const [startDate, setStartDate] = useState(booking.startDate);
@@ -66,6 +69,12 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
         <span>{bookingLabel(booking, project)}</span>
       </div>
 
+      {!canManage && (
+        <p className="text-muted" style={{ fontSize: 13, margin: 0 }}>
+          Lecture seule — vous n'êtes pas responsable de ce projet.
+        </p>
+      )}
+
       <div className="field">
         <label htmlFor="detail-start-date">Période</label>
         <div className="pdc-date-range">
@@ -75,6 +84,7 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
             className="input"
             value={startDate}
             max={endDate}
+            disabled={!canManage}
             onChange={(e) => setStartDate(e.target.value)}
           />
           <span className="text-muted">→</span>
@@ -83,6 +93,7 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
             className="input"
             value={endDate}
             min={startDate}
+            disabled={!canManage}
             onChange={(e) => setEndDate(e.target.value)}
           />
         </div>
@@ -95,6 +106,7 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
               <input
                 type="radio"
                 name="detail-daymode"
+                disabled={!canManage}
                 checked={startHalf === 'AM' && endHalf === 'PM'}
                 onChange={() => {
                   setStartHalf('AM');
@@ -107,6 +119,7 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
               <input
                 type="radio"
                 name="detail-daymode"
+                disabled={!canManage}
                 checked={startHalf === 'AM' && endHalf === 'AM'}
                 onChange={() => {
                   setStartHalf('AM');
@@ -119,6 +132,7 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
               <input
                 type="radio"
                 name="detail-daymode"
+                disabled={!canManage}
                 checked={startHalf === 'PM' && endHalf === 'PM'}
                 onChange={() => {
                   setStartHalf('PM');
@@ -134,11 +148,11 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
               <label>Premier jour</label>
               <div className="seg">
                 <label className="seg-opt">
-                  <input type="radio" name="detail-start-half" checked={startHalf === 'AM'} onChange={() => setStartHalf('AM')} />
+                  <input type="radio" name="detail-start-half" disabled={!canManage} checked={startHalf === 'AM'} onChange={() => setStartHalf('AM')} />
                   Journée complète
                 </label>
                 <label className="seg-opt">
-                  <input type="radio" name="detail-start-half" checked={startHalf === 'PM'} onChange={() => setStartHalf('PM')} />
+                  <input type="radio" name="detail-start-half" disabled={!canManage} checked={startHalf === 'PM'} onChange={() => setStartHalf('PM')} />
                   Après-midi seulement
                 </label>
               </div>
@@ -147,11 +161,11 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
               <label>Dernier jour</label>
               <div className="seg">
                 <label className="seg-opt">
-                  <input type="radio" name="detail-end-half" checked={endHalf === 'PM'} onChange={() => setEndHalf('PM')} />
+                  <input type="radio" name="detail-end-half" disabled={!canManage} checked={endHalf === 'PM'} onChange={() => setEndHalf('PM')} />
                   Journée complète
                 </label>
                 <label className="seg-opt">
-                  <input type="radio" name="detail-end-half" checked={endHalf === 'AM'} onChange={() => setEndHalf('AM')} />
+                  <input type="radio" name="detail-end-half" disabled={!canManage} checked={endHalf === 'AM'} onChange={() => setEndHalf('AM')} />
                   Matin seulement
                 </label>
               </div>
@@ -182,6 +196,7 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
                     className="input"
                     placeholder="Annotation…"
                     defaultValue={booking.dayNotes?.[iso] ?? ''}
+                    disabled={!canManage}
                     onBlur={(e) => {
                       if (e.target.value.trim() !== (booking.dayNotes?.[iso] ?? '')) {
                         onSaveDayNote(iso, e.target.value);
@@ -195,14 +210,16 @@ export function DetailPanel({ x, y, booking, person, project, onRelease, onSaveD
         );
       })()}
 
-      {hasChanges && !invalidRange && (
+      {canManage && hasChanges && !invalidRange && (
         <button type="button" className="btn btn-primary btn-block" onClick={() => onSaveDates(startDate, endDate, startHalf, endHalf)}>
           Enregistrer les nouvelles dates
         </button>
       )}
-      <button type="button" className="btn btn-secondary btn-block" onClick={onRelease}>
-        Libérer
-      </button>
+      {canManage && (
+        <button type="button" className="btn btn-secondary btn-block" onClick={onRelease}>
+          Libérer
+        </button>
+      )}
     </div>
   );
 }
