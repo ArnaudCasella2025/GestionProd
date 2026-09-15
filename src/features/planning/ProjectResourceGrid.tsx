@@ -15,6 +15,10 @@ interface ProjectResourceGridProps {
   projectsById: Map<string, Project>;
   peopleById: Map<string, Person>;
   conflictsByPerson: Map<string, Set<string>>;
+  /** Whether the current user is allowed to create new bookings on this
+   * project — false for a Responsable who isn't assigned to it. Existing
+   * bookings remain viewable/editable via their detail popover. */
+  canBook: boolean;
 }
 
 /**
@@ -39,6 +43,7 @@ export function ProjectResourceGrid({
   projectsById,
   peopleById,
   conflictsByPerson,
+  canBook,
 }: ProjectResourceGridProps) {
   const projectBookings = useMemo(() => bookings.filter((b) => b.projectId === project.id), [bookings, project.id]);
 
@@ -67,9 +72,9 @@ export function ProjectResourceGrid({
         projectsById={projectsById}
         conflictsByPerson={conflictsByPerson}
         dragSelection={dragSelection}
-        onCellMouseDown={handleCellMouseDown}
-        onCellMouseEnter={handleCellMouseEnter}
-        onCellMouseUp={handleCellMouseUp}
+        onCellMouseDown={canBook ? handleCellMouseDown : () => {}}
+        onCellMouseEnter={canBook ? handleCellMouseEnter : () => {}}
+        onCellMouseUp={canBook ? handleCellMouseUp : () => {}}
         onBookingClick={handleBookingClick}
       />
 

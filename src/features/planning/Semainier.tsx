@@ -5,7 +5,7 @@ import type { Booking, Person, Project, ZoomLevel } from '../../types';
 import { BookingPopover } from './BookingPopover';
 import { CalendarGrid } from './CalendarGrid';
 import { DetailPanel } from './DetailPanel';
-import { computeConflictDays } from './calc';
+import { canManageProject, computeConflictDays } from './calc';
 import { buildUnits, shiftAnchor } from './timeUnits';
 import { useBookingGrid } from './useBookingGrid';
 
@@ -34,6 +34,10 @@ export function Semainier({ people, projects, bookings }: SemainierProps) {
   const units = useMemo(() => buildUnits(anchor, zoom), [anchor, zoom]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const conflictsByPerson = useMemo(() => computeConflictDays(bookings), [bookings]);
+
+  const responsablePersonId = resolveTestPersonId(testPersonId, people);
+  const bookableProjects =
+    role === 'responsable' ? projects.filter((p) => canManageProject(p, role, responsablePersonId)) : projects;
 
   const {
     dragSelection,
@@ -122,7 +126,7 @@ export function Semainier({ people, projects, bookings }: SemainierProps) {
           <BookingPopover
             x={createPopover.x}
             y={createPopover.y}
-            projects={projects}
+            projects={bookableProjects}
             onSelectProject={(projectId) => applyBooking({ projectId })}
             onSelectAbsence={(absenceType) => applyBooking({ absenceType })}
           />

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } fr
 import { formatFullDate, formatMonthLabel } from '../../lib/dates';
 import { deleteBooking, seedDemoData, setBookingDayNote, updateBookingDates } from '../../lib/repository';
 import { firebaseConfigured } from '../../lib/firebase';
+import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 import type { Booking, Person, Project, ZoomLevel } from '../../types';
 import { BookingPopover } from './BookingPopover';
 import { CalendarGrid } from './CalendarGrid';
@@ -9,7 +10,7 @@ import { CommandPalette } from './CommandPalette';
 import { ConflictsModal } from './ConflictsModal';
 import { DetailPanel } from './DetailPanel';
 import { ProjectCards } from './ProjectCards';
-import { computeConflictDays, totalPersonDaysReserved } from './calc';
+import { canManageProject, computeConflictDays, totalPersonDaysReserved } from './calc';
 import { buildUnits, shiftAnchor } from './timeUnits';
 import { useBookingGrid } from './useBookingGrid';
 
@@ -27,6 +28,9 @@ interface PlanDeChargeProps {
 }
 
 export function PlanDeCharge({ people, peopleLoading, projects, bookings }: PlanDeChargeProps) {
+  const { role, personId } = useTestRole();
+  const testPersonId = resolveTestPersonId(personId, people);
+  const bookableProjects = role === 'responsable' ? projects.filter((p) => canManageProject(p, role, testPersonId)) : projects;
   const [anchor, setAnchor] = useState(() => new Date());
   const [zoom, setZoom] = useState<ZoomLevel>('semaine');
 
@@ -200,7 +204,7 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
           <BookingPopover
             x={createPopover.x}
             y={createPopover.y}
-            projects={projects}
+            projects={bookableProjects}
             onSelectProject={(projectId) => applyBooking({ projectId })}
             onSelectAbsence={(absenceType) => applyBooking({ absenceType })}
           />

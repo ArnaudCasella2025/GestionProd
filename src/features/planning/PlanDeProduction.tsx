@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { formatFullDate, fromISODate } from '../../lib/dates';
+import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 import type { Booking, Person, Project } from '../../types';
 import { ProjectResourceGrid } from './ProjectResourceGrid';
-import { computeConflictDays, peopleForProject, projectDateRange } from './calc';
+import { canManageProject, computeConflictDays, peopleForProject, projectDateRange } from './calc';
 import { buildUnits, groupByMonth, shiftAnchor, unitRangeForDates, type TimeUnit } from './timeUnits';
 
 interface PlanDeProductionProps {
@@ -16,6 +17,8 @@ function pxBefore(units: TimeUnit[], idx: number): number {
 }
 
 export function PlanDeProduction({ people, projects, bookings }: PlanDeProductionProps) {
+  const { role, personId } = useTestRole();
+  const testPersonId = resolveTestPersonId(personId, people);
   const [anchor, setAnchor] = useState(() => new Date());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -140,6 +143,11 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
 
                 {isExpanded && (
                   <div className="ppr-expanded">
+                    {role === 'responsable' && !canManageProject(project, role, testPersonId) && (
+                      <p className="text-muted ppr-expanded-empty">
+                        Lecture seule — vous n'êtes pas responsable de ce projet.
+                      </p>
+                    )}
                     {projectPeople.length === 0 ? (
                       <p className="text-muted ppr-expanded-empty">Aucune ressource affectée pour l'instant.</p>
                     ) : (
@@ -151,6 +159,7 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
                         projectsById={projectsById}
                         peopleById={peopleById}
                         conflictsByPerson={conflictsByPerson}
+                        canBook={role !== 'responsable' || canManageProject(project, role, testPersonId)}
                       />
                     )}
                   </div>
