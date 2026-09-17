@@ -101,21 +101,19 @@ export function NavRail({ projects, people, pendingRequestCount, onOpenRequests,
             ))}
           </select>
         </div>
-        {(role === 'user' || role === 'responsable') && (
-          <div>
-            <label className="pdc-rail-testrole-label" htmlFor="test-person-select">
-              Se connecter en tant que
-            </label>
-            <select id="test-person-select" className="input" value={personId} onChange={(e) => setPersonId(e.target.value)}>
-              {people.length === 0 && <option value="">Aucune ressource</option>}
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div>
+          <label className="pdc-rail-testrole-label" htmlFor="test-person-select">
+            Se connecter en tant que
+          </label>
+          <select id="test-person-select" className="input" value={personId} onChange={(e) => setPersonId(e.target.value)}>
+            {people.length === 0 && <option value="">Aucune ressource</option>}
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <button type="button" className="btn btn-secondary btn-block" onClick={() => logout().catch(console.error)}>
           Se déconnecter
         </button>

@@ -31,10 +31,11 @@ interface ActiveCell {
 const LOOKBACK_DAYS = 60;
 
 export function TimesheetDeclare({ people, projects, timesheets }: TimesheetDeclareProps) {
-  const { role, personId: testPersonId } = useTestRole();
-  const isPersonalized = role === 'user';
-  const [pickedPersonId, setPickedPersonId] = useState(() => people[0]?.id ?? '');
-  const personId = isPersonalized ? resolveTestPersonId(testPersonId, people) : pickedPersonId;
+  const { personId: testPersonId } = useTestRole();
+  // "Ma saisie" always declares the current person's own hours — nobody,
+  // admin included, edits someone else's timesheet from here (see "Vue
+  // équipe" for a read-only view across the team).
+  const personId = resolveTestPersonId(testPersonId, people);
   const [anchor, setAnchor] = useState(() => new Date());
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeCell, setActiveCell] = useState<ActiveCell | null>(null);
@@ -98,19 +99,6 @@ export function TimesheetDeclare({ people, projects, timesheets }: TimesheetDecl
       )}
 
       <div className="pdc-toolbar">
-        {!isPersonalized && (
-          <div className="field" style={{ marginBottom: 0 }}>
-            <select className="input" value={pickedPersonId} onChange={(e) => setPickedPersonId(e.target.value)} style={{ width: 260 }}>
-              {people.length === 0 && <option value="">Aucune ressource</option>}
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} — {p.role}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         <div className="pdc-time-nav">
           <button type="button" className="btn btn-icon btn-secondary" onClick={() => setAnchor((a) => addDays(a, -7))} aria-label="Semaine précédente">
             ‹
