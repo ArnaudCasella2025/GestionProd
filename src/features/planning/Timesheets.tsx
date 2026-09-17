@@ -14,7 +14,7 @@ type Mode = 'declare' | 'team';
 
 export function Timesheets({ people, projects, timesheets }: TimesheetsProps) {
   const { role } = useTestRole();
-  const canSeeTeamView = role === 'admin' || role === 'responsable';
+  const canSeeTeamView = role === 'admin';
   const [mode, setMode] = useState<Mode>('declare');
   const effectiveMode = canSeeTeamView ? mode : 'declare';
 
@@ -44,7 +44,7 @@ export function Timesheets({ people, projects, timesheets }: TimesheetsProps) {
 
       {effectiveMode === 'team' && (
         <p className="text-muted" style={{ marginTop: 0 }}>
-          Réservée à la direction de production.
+          Réservée à l'administration.
         </p>
       )}
 
