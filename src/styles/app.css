@@ -815,6 +815,15 @@
 }
 
 /* — affectation des permanents — */
+/* Override .table's width: 100% — with as few as one or two relevant
+ * project columns (see PermanentAllocations' filtering), stretching to the
+ * full container width leaves huge empty gaps between them. Sized to its
+ * own content instead; the wrapping overflow-x: auto div still kicks in
+ * and scrolls normally once a resource has enough projects to need it. */
+.pa-table {
+  width: auto;
+  min-width: 320px;
+}
 .pa-table th {
   vertical-align: top;
 }
