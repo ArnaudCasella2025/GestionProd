@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { formatFullDate, fromISODate } from '../../lib/dates';
-import { createRequest } from '../../lib/repository';
+import { createBooking, createRequest } from '../../lib/repository';
 import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 import {
   ABSENCE_LABELS,
@@ -11,6 +11,11 @@ import {
   type RequestStatus,
 } from '../../types';
 import { leaveBalance, requestWorkdayCount } from './absenceCalc';
+
+/** Options offered in "Mes absences" — the requestable types (needing
+ * director approval) plus télétravail, which is declared directly as a
+ * booking with no approval step and no impact on staffing (see handleSubmit). */
+const DECLARABLE_TYPES: AbsenceType[] = [...REQUESTABLE_ABSENCE_TYPES, 'teletravail'];
 
 interface MyAbsencesProps {
   people: Person[];
@@ -56,7 +61,14 @@ export function MyAbsences({ people, requests }: MyAbsencesProps) {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!personId || !validRange) return;
-    createRequest(personId, type, startDate, endDate).catch(console.error);
+    if (type === 'teletravail') {
+      // Purely declarative — a direct booking, no approval step, and (unlike
+      // congé/RTT/maladie) never treated as unavailability: staffing someone
+      // on a project that same day remains entirely possible.
+      createBooking({ personId, absenceType: 'teletravail', startDate, endDate }).catch(console.error);
+    } else {
+      createRequest(personId, type, startDate, endDate).catch(console.error);
+    }
     setStartDate('');
     setEndDate('');
   }
@@ -67,8 +79,8 @@ export function MyAbsences({ people, requests }: MyAbsencesProps) {
         <h1>Mes absences</h1>
         <p className="text-muted">
           Demandez un congé ou une RTT, ou déclarez un arrêt maladie — chaque demande passe par la validation de la
-          direction de production. Le télétravail ne nécessite pas de demande : déclarez-le directement dans le Plan
-          de charge ou les Timesheets.
+          direction de production. Le télétravail ne nécessite pas de demande : il est immédiatement enregistré et
+          n'empêche pas de vous staffer sur un projet ce jour-là, contrairement aux congés, RTT et arrêts maladie.
         </p>
         <div className="pdc-header-rule-thick" />
         <div className="pdc-header-rule-thin" />
@@ -113,12 +125,12 @@ export function MyAbsences({ people, requests }: MyAbsencesProps) {
           </div>
 
           <form className="card ma-request-form" onSubmit={handleSubmit}>
-            <div className="card-kicker">Nouvelle demande</div>
+            <div className="card-kicker">{type === 'teletravail' ? 'Déclarer du télétravail' : 'Nouvelle demande'}</div>
             <div className="ma-request-fields">
               <div className="field" style={{ marginBottom: 0 }}>
                 <label htmlFor="ma-type">Type</label>
                 <select id="ma-type" className="input" value={type} onChange={(e) => setType(e.target.value as AbsenceType)}>
-                  {REQUESTABLE_ABSENCE_TYPES.map((t) => (
+                  {DECLARABLE_TYPES.map((t) => (
                     <option key={t} value={t}>
                       {ABSENCE_LABELS[t]}
                     </option>
@@ -134,7 +146,7 @@ export function MyAbsences({ people, requests }: MyAbsencesProps) {
                 <input id="ma-end" type="date" className="input" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
               </div>
               <button type="submit" className="btn btn-primary" disabled={!validRange}>
-                Envoyer la demande
+                {type === 'teletravail' ? 'Déclarer' : 'Envoyer la demande'}
               </button>
             </div>
             {requestedDays > 0 && (
