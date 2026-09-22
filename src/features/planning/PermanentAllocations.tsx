@@ -57,6 +57,14 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
     () => bookings.filter((b) => b.personId === personId && b.projectId),
     [bookings, personId],
   );
+  // Only the projects this person actually has bookings or a manual
+  // allocation on — with dozens of projects across the studio, showing
+  // every one of them as a column (mostly empty) makes the table unreadable.
+  const relevantProjects = useMemo(() => {
+    const ids = new Set(personBookings.map((b) => b.projectId));
+    for (const o of allocationOverrides) if (o.personId === personId) ids.add(o.projectId);
+    return projects.filter((p) => ids.has(p.id));
+  }, [projects, personBookings, allocationOverrides, personId]);
   const personTimesheets = useMemo(() => timesheets.filter((t) => t.personId === personId), [timesheets, personId]);
   const overrideByKey = useMemo(() => {
     const map = new Map<string, AllocationOverride>();
@@ -200,14 +208,16 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
 
       {!person || projects.length === 0 ? (
         <p className="text-muted">Aucune ressource ou aucun projet pour l'instant.</p>
+      ) : relevantProjects.length === 0 ? (
+        <p className="text-muted">Aucun projet pour cette ressource pour l'instant.</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table className={`table pa-table${mode === 'reel' ? ' pa-table-reel' : ''}`}>
             <thead>
               <tr>
                 <th>Mois</th>
-                {projects.map((project) => (
-                  <th key={project.id}>
+                {relevantProjects.map((project) => (
+                  <th key={project.id} style={{ minWidth: 150 }}>
                     <span className="pdc-color-dot" style={{ background: project.color, marginRight: 6 }} />
                     {project.name}
                     <div className="pa-budget-hint">Budget : {project.budget.toLocaleString('fr-FR')} €</div>
@@ -228,7 +238,7 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
                       </span>
                     )}
                   </td>
-                  {projects.map((project) => {
+                  {relevantProjects.map((project) => {
                     const isEditing = editingCell?.projectId === project.id && editingCell.month === month;
                     const amount = cellAmount(project.id, month);
                     const hasOverride = mode === 'officiel' && overrideByKey.has(`${project.id}__${month}`);
@@ -266,7 +276,7 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
               })}
               <tr className="pa-total-row">
                 <td>Total déclaré</td>
-                {projects.map((project) => {
+                {relevantProjects.map((project) => {
                   const total = MONTHS.reduce((sum, month) => sum + cellAmount(project.id, month), 0);
                   return (
                     <td key={project.id} style={{ textAlign: 'center' }}>

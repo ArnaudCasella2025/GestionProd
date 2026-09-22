@@ -46,7 +46,9 @@ export function buildUnits(anchor: Date, zoom: ZoomLevel): TimeUnit[] {
         label: String(weekStart.getDate()),
         startIso: toISODate(weekStart),
         endIso: toISODate(weekEnd),
-        monthGroupLabel: weekStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+        // Short month name — the "année" zoom's per-week columns are narrow
+        // enough that "septembre 2026" gets clipped, unlike "mois"/"semaine".
+        monthGroupLabel: weekStart.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
         isToday: today >= weekStart && today <= weekEnd,
         isWeekend: false,
         widthPx: WIDTH.annee,
