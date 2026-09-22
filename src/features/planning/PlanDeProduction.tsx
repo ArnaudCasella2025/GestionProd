@@ -21,6 +21,12 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
   const testPersonId = resolveTestPersonId(personId, people);
   const [anchor, setAnchor] = useState(() => new Date());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // People added to a project's grid so they can be booked, before they have
+  // an actual booking there — purely local, so a person who never ends up
+  // with a real booking simply drops back out (e.g. on navigating away).
+  const [manualStaff, setManualStaff] = useState<Record<string, string[]>>({});
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [pickedPersonId, setPickedPersonId] = useState('');
 
   const units = useMemo(() => buildUnits(anchor, 'annee'), [anchor]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
@@ -46,6 +52,17 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
       return next;
     });
   };
+
+  function addPerson(projectId: string) {
+    if (!pickedPersonId) return;
+    setManualStaff((prev) => {
+      const existing = prev[projectId] ?? [];
+      if (existing.includes(pickedPersonId)) return prev;
+      return { ...prev, [projectId]: [...existing, pickedPersonId] };
+    });
+    setPickedPersonId('');
+    setAddingTo(null);
+  }
 
   return (
     <main className="pdc-main">
@@ -95,6 +112,14 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
           {projects.map((project) => {
             const range = projectDateRange(bookings, project.id);
             const projectPeople = peopleForProject(bookings, people, project.id);
+            const canManage = role !== 'responsable' || canManageProject(project, role, testPersonId);
+            const manualIds = manualStaff[project.id] ?? [];
+            const extraPeople = manualIds
+              .filter((id) => !projectPeople.some((p) => p.id === id))
+              .map((id) => peopleById.get(id))
+              .filter((p): p is Person => Boolean(p));
+            const displayPeople = [...projectPeople, ...extraPeople];
+            const availableToAdd = people.filter((p) => !displayPeople.some((dp) => dp.id === p.id));
             const isExpanded = expanded.has(project.id);
             const visibleRange = range ? unitRangeForDates(units, range.start, range.end) : null;
 
@@ -143,23 +168,66 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
 
                 {isExpanded && (
                   <div className="ppr-expanded">
-                    {role === 'responsable' && !canManageProject(project, role, testPersonId) && (
+                    {!canManage && (
                       <p className="text-muted ppr-expanded-empty">
                         Lecture seule — vous n'êtes pas responsable de ce projet.
                       </p>
                     )}
-                    {projectPeople.length === 0 ? (
+                    {canManage &&
+                      (addingTo === project.id ? (
+                        <div className="pdc-toolbar" style={{ marginBottom: 'var(--space-2)' }}>
+                          <select
+                            className="input"
+                            value={pickedPersonId}
+                            onChange={(e) => setPickedPersonId(e.target.value)}
+                            style={{ width: 260 }}
+                            autoFocus
+                          >
+                            <option value="">Choisir une personne…</option>
+                            {availableToAdd.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} — {p.role}
+                              </option>
+                            ))}
+                          </select>
+                          <button type="button" className="btn btn-primary" disabled={!pickedPersonId} onClick={() => addPerson(project.id)}>
+                            Ajouter
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => {
+                              setAddingTo(null);
+                              setPickedPersonId('');
+                            }}
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="pdc-toolbar" style={{ marginBottom: 'var(--space-2)' }}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => setAddingTo(project.id)}
+                            disabled={availableToAdd.length === 0}
+                          >
+                            + Ajouter une personne
+                          </button>
+                        </div>
+                      ))}
+                    {displayPeople.length === 0 ? (
                       <p className="text-muted ppr-expanded-empty">Aucune ressource affectée pour l'instant.</p>
                     ) : (
                       <ProjectResourceGrid
                         project={project}
-                        people={projectPeople}
+                        people={displayPeople}
                         units={units}
                         bookings={bookings}
                         projectsById={projectsById}
                         peopleById={peopleById}
                         conflictsByPerson={conflictsByPerson}
-                        canBook={role !== 'responsable' || canManageProject(project, role, testPersonId)}
+                        canBook={canManage}
                       />
                     )}
                   </div>
