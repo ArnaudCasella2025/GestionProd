@@ -4,22 +4,26 @@ import { createBooking, createRequest } from '../../lib/repository';
 import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 import {
   ABSENCE_LABELS,
+  DEFAULT_TELETRAVAIL_DAYS_PER_WEEK,
   REQUESTABLE_ABSENCE_TYPES,
   type AbsenceRequest,
   type AbsenceType,
+  type Booking,
   type Person,
   type RequestStatus,
 } from '../../types';
-import { leaveBalance, requestWorkdayCount } from './absenceCalc';
+import { leaveBalance, requestWorkdayCount, teletravailExceedsQuota } from './absenceCalc';
 
 /** Options offered in "Mes absences" — the requestable types (needing
  * director approval) plus télétravail, which is declared directly as a
- * booking with no approval step and no impact on staffing (see handleSubmit). */
+ * booking with no approval step, unless it exceeds the person's weekly quota
+ * (see handleSubmit). */
 const DECLARABLE_TYPES: AbsenceType[] = [...REQUESTABLE_ABSENCE_TYPES, 'teletravail'];
 
 interface MyAbsencesProps {
   people: Person[];
   requests: AbsenceRequest[];
+  bookings: Booking[];
 }
 
 const STATUS_LABEL: Record<RequestStatus, string> = {
@@ -33,7 +37,7 @@ const STATUS_TAG_CLASS: Record<RequestStatus, string> = {
   refused: 'tag-neutral',
 };
 
-export function MyAbsences({ people, requests }: MyAbsencesProps) {
+export function MyAbsences({ people, requests, bookings }: MyAbsencesProps) {
   const { role, personId: testPersonId } = useTestRole();
   const isPersonalized = role === 'user';
   const [pickedPersonId, setPickedPersonId] = useState(() => people[0]?.id ?? '');
@@ -58,15 +62,21 @@ export function MyAbsences({ people, requests }: MyAbsencesProps) {
   const requestedDays = validRange ? requestWorkdayCount(startDate, endDate) : 0;
   const exceedsBalance = relevantBalance != null && requestedDays > relevantBalance.remaining;
 
+  const teletravailQuota = person?.teletravailDaysPerWeek ?? DEFAULT_TELETRAVAIL_DAYS_PER_WEEK;
+  const teletravailNeedsValidation =
+    type === 'teletravail' && validRange && person != null && teletravailExceedsQuota(bookings, personId, startDate, endDate, teletravailQuota);
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!personId || !validRange) return;
-    if (type === 'teletravail') {
+    if (type === 'teletravail' && !teletravailNeedsValidation) {
       // Purely declarative — a direct booking, no approval step, and (unlike
       // congé/RTT/maladie) never treated as unavailability: staffing someone
       // on a project that same day remains entirely possible.
       createBooking({ personId, absenceType: 'teletravail', startDate, endDate }).catch(console.error);
     } else {
+      // Either a requestable type, or télétravail beyond the weekly quota —
+      // both go through the manager's validation the same way.
       createRequest(personId, type, startDate, endDate).catch(console.error);
     }
     setStartDate('');
@@ -78,9 +88,10 @@ export function MyAbsences({ people, requests }: MyAbsencesProps) {
       <header className="pdc-header">
         <h1>Mes absences</h1>
         <p className="text-muted">
-          Demandez un congé ou une RTT, ou déclarez un arrêt maladie — chaque demande passe par la validation de la
-          direction de production. Le télétravail ne nécessite pas de demande : il est immédiatement enregistré et
-          n'empêche pas de vous staffer sur un projet ce jour-là, contrairement aux congés, RTT et arrêts maladie.
+          Demandez un congé ou une RTT, ou déclarez un arrêt maladie — chaque demande passe par la validation de votre
+          manager. Le télétravail est immédiatement enregistré et n'empêche pas de vous staffer sur un projet ce
+          jour-là, dans la limite de votre quota hebdomadaire — au-delà, il passe aussi par la validation de votre
+          manager.
         </p>
         <div className="pdc-header-rule-thick" />
         <div className="pdc-header-rule-thin" />
@@ -122,10 +133,19 @@ export function MyAbsences({ people, requests }: MyAbsencesProps) {
                 {rttBalance!.pending > 0 ? ` · ${rttBalance!.pending} j en attente` : ''}
               </div>
             </div>
+            <div className="card ma-balance-card">
+              <div className="card-kicker">Télétravail</div>
+              <div className="ma-balance-figure">{teletravailQuota} j/semaine</div>
+              <div className="text-muted" style={{ fontSize: 13 }}>
+                Au-delà, validation de votre manager requise
+              </div>
+            </div>
           </div>
 
           <form className="card ma-request-form" onSubmit={handleSubmit}>
-            <div className="card-kicker">{type === 'teletravail' ? 'Déclarer du télétravail' : 'Nouvelle demande'}</div>
+            <div className="card-kicker">
+              {type === 'teletravail' && !teletravailNeedsValidation ? 'Déclarer du télétravail' : 'Nouvelle demande'}
+            </div>
             <div className="ma-request-fields">
               <div className="field" style={{ marginBottom: 0 }}>
                 <label htmlFor="ma-type">Type</label>
@@ -146,7 +166,7 @@ export function MyAbsences({ people, requests }: MyAbsencesProps) {
                 <input id="ma-end" type="date" className="input" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
               </div>
               <button type="submit" className="btn btn-primary" disabled={!validRange}>
-                {type === 'teletravail' ? 'Déclarer' : 'Envoyer la demande'}
+                {type === 'teletravail' && !teletravailNeedsValidation ? 'Déclarer' : 'Envoyer la demande'}
               </button>
             </div>
             {requestedDays > 0 && (
@@ -154,6 +174,12 @@ export function MyAbsences({ people, requests }: MyAbsencesProps) {
                 {requestedDays} jour{requestedDays > 1 ? 's' : ''} ouvré{requestedDays > 1 ? 's' : ''}
                 {relevantBalance ? ` · solde après validation : ${relevantBalance.remaining - requestedDays} j` : ''}
                 {exceedsBalance ? ' — dépasse le solde disponible' : ''}
+              </p>
+            )}
+            {type === 'teletravail' && teletravailNeedsValidation && (
+              <p className="ma-request-hint ma-request-hint-warning">
+                Dépasse votre quota de {teletravailQuota} jour{teletravailQuota > 1 ? 's' : ''} de télétravail par
+                semaine — cette déclaration sera soumise à la validation de votre manager.
               </p>
             )}
           </form>

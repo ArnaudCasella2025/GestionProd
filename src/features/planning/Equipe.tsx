@@ -29,6 +29,7 @@ export function Equipe({ people, holidays }: EquipeProps) {
 
   const sorted = [...people].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   const sortedHolidays = [...holidays].sort((a, b) => a.date.localeCompare(b.date));
+  const peopleById = new Map(people.map((p) => [p.id, p]));
 
   function handleAddHoliday(e: FormEvent) {
     e.preventDefault();
@@ -69,12 +70,14 @@ export function Equipe({ people, holidays }: EquipeProps) {
               <th>Poste</th>
               {canSeeFinancials && <th>TJM</th>}
               <th>Droits</th>
+              <th>Manager</th>
               {isAdmin && <th />}
             </tr>
           </thead>
           <tbody>
             {sorted.map((person) => {
               const accessLevel = person.accessLevel ?? 'user';
+              const manager = person.managerId ? peopleById.get(person.managerId) : undefined;
               return (
                 <tr key={person.id}>
                   <td>{person.name}</td>
@@ -83,6 +86,7 @@ export function Equipe({ people, holidays }: EquipeProps) {
                   <td>
                     <span className={`tag ${ACCESS_TAG_CLASS[accessLevel]}`}>{ACCESS_LEVEL_LABELS[accessLevel]}</span>
                   </td>
+                  <td>{manager?.name ?? '—'}</td>
                   {isAdmin && (
                     <td>
                       {confirmDeleteId === person.id ? (
@@ -193,6 +197,7 @@ export function Equipe({ people, holidays }: EquipeProps) {
       {modal && isAdmin && (
         <TeamMemberModal
           initial={modal.mode === 'edit' ? modal.person : undefined}
+          people={people}
           onSave={(data) => {
             if (modal.mode === 'edit') updatePerson(modal.person.id, data).catch(console.error);
             else createPerson(data).catch(console.error);

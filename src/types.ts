@@ -16,6 +16,13 @@ export const REQUESTABLE_ABSENCE_TYPES: AbsenceType[] = ['conge', 'rtt', 'maladi
 export const DEFAULT_CONGES_PER_YEAR = 25;
 export const DEFAULT_RTT_PER_YEAR = 11;
 
+/** Default weekly télétravail days allowed before a declaration needs the
+ * person's manager to validate it, used when a person has no override set. */
+export const DEFAULT_TELETRAVAIL_DAYS_PER_WEEK = 1;
+/** Default contractual work days per week (5 = full-time), used when a
+ * person has no override set. */
+export const DEFAULT_WORK_DAYS_PER_WEEK = 5;
+
 export type AccessLevel = 'admin' | 'responsable' | 'user';
 
 export const ACCESS_LEVEL_LABELS: Record<AccessLevel, string> = {
@@ -72,6 +79,15 @@ export interface Person {
   rttPerYear?: number;
   /** Salary changes over time. Empty/unset means dailyRate is a plain manual value. */
   salaryHistory?: SalaryRecord[];
+  /** Weekly télétravail days allowed before a declaration needs manager
+   * validation. Defaults to DEFAULT_TELETRAVAIL_DAYS_PER_WEEK if unset. */
+  teletravailDaysPerWeek?: number;
+  /** Contractual work days per week (e.g. 4 for a 4/5e). Defaults to
+   * DEFAULT_WORK_DAYS_PER_WEEK if unset. */
+  workDaysPerWeek?: number;
+  /** Person.id of this person's manager (an Admin or Responsable), who
+   * validates their absence requests. null/unset means none assigned. */
+  managerId?: string | null;
 }
 
 export type ProjectStatus = 'sous_controle' | 'tendu' | 'depassement';

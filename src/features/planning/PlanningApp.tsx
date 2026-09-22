@@ -10,7 +10,7 @@ import {
   useRequests,
   useTimesheets,
 } from '../../lib/repository';
-import { useTestRole } from '../../lib/testRole';
+import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 import { Equipe } from './Equipe';
 import { MyAbsences } from './MyAbsences';
 import { NavRail, type PlanningView } from './NavRail';
@@ -25,7 +25,7 @@ import { Timesheets } from './Timesheets';
 const HIDDEN_FOR_USER: PlanningView[] = ['charge', 'production'];
 
 export function PlanningApp() {
-  const { role } = useTestRole();
+  const { role, personId } = useTestRole();
   const { data: people, loading: peopleLoading } = usePeople();
   const { data: projects } = useProjects();
   const { data: bookings } = useBookings();
@@ -39,7 +39,15 @@ export function PlanningApp() {
   const effectiveView = role === 'user' && HIDDEN_FOR_USER.includes(view) ? 'semainier' : view;
 
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
-  const pendingRequestCount = requests.filter((r) => r.status === 'pending').length;
+  const testPersonId = resolveTestPersonId(personId, people);
+  // A Responsable only manages (and is notified about) their own reports'
+  // requests. Admin manages everyone; User only ever sees a read-only list,
+  // so neither is scoped down.
+  const pendingRequestCount = requests.filter((r) => {
+    if (r.status !== 'pending') return false;
+    if (role !== 'responsable') return true;
+    return peopleById.get(r.personId)?.managerId === testPersonId;
+  }).length;
 
   return (
     <div className="pdc-layout">
@@ -66,7 +74,7 @@ export function PlanningApp() {
           allocationOverrides={allocationOverrides}
         />
       )}
-      {effectiveView === 'absences' && <MyAbsences people={people} requests={requests} />}
+      {effectiveView === 'absences' && <MyAbsences people={people} requests={requests} bookings={bookings} />}
       {effectiveView === 'projets' && <Projects projects={projects} bookings={bookings} people={people} />}
       {effectiveView === 'equipe' && <Equipe people={people} holidays={holidays} />}
 

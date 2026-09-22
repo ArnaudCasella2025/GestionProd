@@ -4,6 +4,8 @@ import {
   ACCESS_LEVEL_LABELS,
   DEFAULT_CONGES_PER_YEAR,
   DEFAULT_RTT_PER_YEAR,
+  DEFAULT_TELETRAVAIL_DAYS_PER_WEEK,
+  DEFAULT_WORK_DAYS_PER_WEEK,
   JOB_TITLES,
   type AccessLevel,
   type Person,
@@ -14,6 +16,8 @@ import { chargeAmount, dailyRateFor, dailyRateOn, recordEffectiveOn } from './sa
 interface TeamMemberModalProps {
   /** Present when editing an existing member; absent when creating a new one. */
   initial?: Person;
+  /** The rest of the team, to offer as manager candidates (Admin/Responsable only). */
+  people: Person[];
   onSave: (data: {
     name: string;
     role: string;
@@ -22,19 +26,31 @@ interface TeamMemberModalProps {
     congesPerYear: number;
     rttPerYear: number;
     salaryHistory: SalaryRecord[];
+    teletravailDaysPerWeek: number;
+    workDaysPerWeek: number;
+    managerId: string | null;
   }) => void;
   onClose: () => void;
 }
 
 const ACCESS_LEVELS: AccessLevel[] = ['admin', 'responsable', 'user'];
 
-export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalProps) {
+export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMemberModalProps) {
   const [name, setName] = useState(initial?.name ?? '');
   const [role, setRole] = useState(initial?.role ?? JOB_TITLES[0]);
   const [accessLevel, setAccessLevel] = useState<AccessLevel>(initial?.accessLevel ?? 'user');
   const [congesPerYear, setCongesPerYear] = useState(String(initial?.congesPerYear ?? DEFAULT_CONGES_PER_YEAR));
   const [rttPerYear, setRttPerYear] = useState(String(initial?.rttPerYear ?? DEFAULT_RTT_PER_YEAR));
+  const [teletravailDaysPerWeek, setTeletravailDaysPerWeek] = useState(
+    String(initial?.teletravailDaysPerWeek ?? DEFAULT_TELETRAVAIL_DAYS_PER_WEEK),
+  );
+  const [workDaysPerWeek, setWorkDaysPerWeek] = useState(String(initial?.workDaysPerWeek ?? DEFAULT_WORK_DAYS_PER_WEEK));
+  const [managerId, setManagerId] = useState(initial?.managerId ?? '');
   const [salaryHistory, setSalaryHistory] = useState<SalaryRecord[]>(initial?.salaryHistory ?? []);
+
+  const managerCandidates = people.filter(
+    (p) => p.id !== initial?.id && (p.accessLevel === 'admin' || p.accessLevel === 'responsable'),
+  );
 
   const todayIso = toISODate(new Date());
   const [recordDate, setRecordDate] = useState(todayIso);
@@ -52,12 +68,19 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
 
   const congesNumber = Number(congesPerYear);
   const rttNumber = Number(rttPerYear);
+  const teletravailNumber = Number(teletravailDaysPerWeek);
+  const workDaysNumber = Number(workDaysPerWeek);
   const otherFieldsValid =
     name.trim().length > 0 &&
     Number.isFinite(congesNumber) &&
     congesNumber >= 0 &&
     Number.isFinite(rttNumber) &&
-    rttNumber >= 0;
+    rttNumber >= 0 &&
+    Number.isFinite(teletravailNumber) &&
+    teletravailNumber >= 0 &&
+    Number.isFinite(workDaysNumber) &&
+    workDaysNumber > 0 &&
+    workDaysNumber <= 7;
   const isValid = otherFieldsValid && effectiveRate != null && effectiveRate > 0;
 
   const recordGrossNumber = Number(recordGross);
@@ -107,6 +130,9 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
       congesPerYear: congesNumber,
       rttPerYear: rttNumber,
       salaryHistory: finalHistory,
+      teletravailDaysPerWeek: teletravailNumber,
+      workDaysPerWeek: workDaysNumber,
+      managerId: managerId || null,
     });
   };
 
@@ -247,6 +273,48 @@ export function TeamMemberModal({ initial, onSave, onClose }: TeamMemberModalPro
               required
             />
           </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+          <div className="field" style={{ flex: 1 }}>
+            <label htmlFor="team-work-days">Jours travaillés / semaine</label>
+            <input
+              id="team-work-days"
+              className="input"
+              type="number"
+              min={1}
+              max={7}
+              step={1}
+              value={workDaysPerWeek}
+              onChange={(e) => setWorkDaysPerWeek(e.target.value)}
+              required
+            />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label htmlFor="team-teletravail">Télétravail (j/semaine)</label>
+            <input
+              id="team-teletravail"
+              className="input"
+              type="number"
+              min={0}
+              step={1}
+              value={teletravailDaysPerWeek}
+              onChange={(e) => setTeletravailDaysPerWeek(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor="team-manager">Manager</label>
+          <select id="team-manager" className="input" value={managerId} onChange={(e) => setManagerId(e.target.value)}>
+            <option value="">Non assigné</option>
+            {managerCandidates.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({ACCESS_LEVEL_LABELS[p.accessLevel ?? 'user']})
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="field">

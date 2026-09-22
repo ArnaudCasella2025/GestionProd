@@ -1,5 +1,5 @@
 import { formatFullDate, fromISODate } from '../../lib/dates';
-import { useTestRole } from '../../lib/testRole';
+import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 import { ABSENCE_LABELS, type AbsenceRequest, type Person } from '../../types';
 
 interface RequestsModalProps {
@@ -11,9 +11,14 @@ interface RequestsModalProps {
 }
 
 export function RequestsModal({ requests, peopleById, onApprove, onRefuse, onClose }: RequestsModalProps) {
-  const { role } = useTestRole();
+  const { role, personId } = useTestRole();
   const canDecide = role === 'admin' || role === 'responsable';
-  const pending = requests.filter((r) => r.status === 'pending');
+  const testPersonId = resolveTestPersonId(personId, [...peopleById.values()]);
+  // A Responsable only handles their own reports' requests; Admin sees
+  // everyone's, and User's read-only view isn't scoped down either.
+  const pending = requests
+    .filter((r) => r.status === 'pending')
+    .filter((r) => role !== 'responsable' || peopleById.get(r.personId)?.managerId === testPersonId);
 
   return (
     <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>

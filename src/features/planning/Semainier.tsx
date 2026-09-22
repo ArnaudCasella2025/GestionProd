@@ -113,9 +113,9 @@ export function Semainier({ people, projects, bookings }: SemainierProps) {
           projectsById={projectsById}
           conflictsByPerson={conflictsByPerson}
           dragSelection={dragSelection}
-          onCellMouseDown={handleCellMouseDown}
-          onCellMouseEnter={handleCellMouseEnter}
-          onCellMouseUp={handleCellMouseUp}
+          onCellMouseDown={isPersonalized ? () => {} : handleCellMouseDown}
+          onCellMouseEnter={isPersonalized ? () => {} : handleCellMouseEnter}
+          onCellMouseUp={isPersonalized ? () => {} : handleCellMouseUp}
           onBookingClick={handleBookingClick}
         />
       )}
@@ -143,7 +143,9 @@ export function Semainier({ people, projects, bookings }: SemainierProps) {
             booking={detailPanel.booking}
             person={person}
             project={detailProject}
-            canManage={role !== 'responsable' || !detailProject || canManageProject(detailProject, role, responsablePersonId)}
+            canManage={
+              !isPersonalized && (role !== 'responsable' || !detailProject || canManageProject(detailProject, role, responsablePersonId))
+            }
             onRelease={() => {
               deleteBooking(detailPanel.booking.id).catch(console.error);
               setDetailPanel(null);
