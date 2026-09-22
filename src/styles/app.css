@@ -573,7 +573,7 @@
 .ppr-overview-row {
   display: flex;
   align-items: center;
-  min-height: 52px;
+  min-height: 40px;
   width: fit-content;
 }
 .ppr-label-col {
@@ -583,6 +583,12 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
+  /* Pinned while scrolling the timeline horizontally — project names stay
+     put, only the month columns move underneath. */
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--color-bg);
 }
 .ppr-chevron {
   flex: none;
@@ -669,6 +675,12 @@
 
 .ppr-timeline-header {
   border-bottom: 1px solid var(--color-divider);
+  /* Pinned while scrolling the project list vertically — the month header
+     stays visible above whichever projects are currently in view. */
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--color-bg);
 }
 
 /* — timesheets — */
