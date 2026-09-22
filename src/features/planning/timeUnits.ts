@@ -114,6 +114,12 @@ export function splitAtWeekends(units: TimeUnit[], startIdx: number, endIdx: num
   return segments;
 }
 
+/** Below this pixel width, no month label can render legibly (this happens
+ * for the partial week straddling the year boundary in "année" zoom, e.g.
+ * a lone late-December week leading into a January-starting view) — blank
+ * it out rather than show a one-letter fragment. */
+const MIN_MONTH_LABEL_WIDTH = 40;
+
 /** Groups consecutive units sharing the same month-group label, for the month band header. */
 export function groupByMonth(units: TimeUnit[]): { label: string; span: number }[] {
   const groups: { label: string; span: number }[] = [];
@@ -124,6 +130,10 @@ export function groupByMonth(units: TimeUnit[]): { label: string; span: number }
     } else {
       groups.push({ label: unit.monthGroupLabel, span: 1 });
     }
+  }
+  const unitWidth = units[0]?.widthPx ?? 0;
+  for (const group of groups) {
+    if (group.span * unitWidth < MIN_MONTH_LABEL_WIDTH) group.label = '';
   }
   return groups;
 }
