@@ -40,13 +40,14 @@ export function PlanningApp() {
 
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const testPersonId = resolveTestPersonId(personId, people);
-  // A Responsable only manages (and is notified about) their own reports'
-  // requests. Admin manages everyone; User only ever sees a read-only list,
-  // so neither is scoped down.
+  // Admin sees every pending request. Everyone else sees their own pending
+  // request (so they can track it) plus, for a Responsable, the ones sent
+  // to them as manager — a plain User only ever sees their own.
   const pendingRequestCount = requests.filter((r) => {
     if (r.status !== 'pending') return false;
-    if (role !== 'responsable') return true;
-    return peopleById.get(r.personId)?.managerId === testPersonId;
+    if (role === 'admin') return true;
+    if (r.personId === testPersonId) return true;
+    return role === 'responsable' && peopleById.get(r.personId)?.managerId === testPersonId;
   }).length;
 
   return (

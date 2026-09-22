@@ -12,13 +12,24 @@ interface RequestsModalProps {
 
 export function RequestsModal({ requests, peopleById, onApprove, onRefuse, onClose }: RequestsModalProps) {
   const { role, personId } = useTestRole();
-  const canDecide = role === 'admin' || role === 'responsable';
   const testPersonId = resolveTestPersonId(personId, [...peopleById.values()]);
-  // A Responsable only handles their own reports' requests; Admin sees
-  // everyone's, and User's read-only view isn't scoped down either.
-  const pending = requests
-    .filter((r) => r.status === 'pending')
-    .filter((r) => role !== 'responsable' || peopleById.get(r.personId)?.managerId === testPersonId);
+  // Admin sees every pending request. Everyone else sees their own pending
+  // request (to track it) plus, for a Responsable, the ones sent to them as
+  // manager — a plain User only ever sees their own.
+  const pending = requests.filter((r) => {
+    if (r.status !== 'pending') return false;
+    if (role === 'admin') return true;
+    if (r.personId === testPersonId) return true;
+    return role === 'responsable' && peopleById.get(r.personId)?.managerId === testPersonId;
+  });
+  // Whether the CURRENT viewer can act on a given row — never on your own
+  // request (even an Admin's), only on a report's request as their manager.
+  function canDecideOn(request: AbsenceRequest): boolean {
+    if (request.personId === testPersonId) return false;
+    if (role === 'admin') return true;
+    return role === 'responsable' && peopleById.get(request.personId)?.managerId === testPersonId;
+  }
+  const canDecide = pending.some(canDecideOn);
 
   return (
     <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -44,9 +55,13 @@ export function RequestsModal({ requests, peopleById, onApprove, onRefuse, onClo
             <tbody>
               {pending.map((request) => {
                 const person = peopleById.get(request.personId);
+                const isOwnRequest = request.personId === testPersonId;
                 return (
                   <tr key={request.id}>
-                    <td>{person?.name ?? '—'}</td>
+                    <td>
+                      {person?.name ?? '—'}
+                      {isOwnRequest && <span className="text-muted"> (moi)</span>}
+                    </td>
                     <td>
                       <span className="tag tag-accent">{ABSENCE_LABELS[request.type]}</span>
                     </td>
@@ -54,18 +69,21 @@ export function RequestsModal({ requests, peopleById, onApprove, onRefuse, onClo
                       {formatFullDate(fromISODate(request.startDate))}
                       {request.startDate !== request.endDate ? ` → ${formatFullDate(fromISODate(request.endDate))}` : ''}
                     </td>
-                    {canDecide && (
-                      <td>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button type="button" className="btn btn-primary" onClick={() => onApprove(request)}>
-                            Valider
-                          </button>
-                          <button type="button" className="btn btn-secondary" onClick={() => onRefuse(request.id)}>
-                            Refuser
-                          </button>
-                        </div>
-                      </td>
-                    )}
+                    {canDecide &&
+                      (canDecideOn(request) ? (
+                        <td>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button type="button" className="btn btn-primary" onClick={() => onApprove(request)}>
+                              Valider
+                            </button>
+                            <button type="button" className="btn btn-secondary" onClick={() => onRefuse(request.id)}>
+                              Refuser
+                            </button>
+                          </div>
+                        </td>
+                      ) : (
+                        <td />
+                      ))}
                   </tr>
                 );
               })}
