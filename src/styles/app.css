@@ -285,6 +285,15 @@
 .dialog-backdrop {
   z-index: 1000;
 }
+/* The design system's .dialog has no max-height either, so a tall one
+   (e.g. a team member's salary history + all the fields below it) just
+   overflows the viewport with nothing to scroll — a wheel scroll over it
+   then falls through to the page behind the backdrop instead. */
+.dialog {
+  max-height: calc(100vh - 2 * var(--space-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .pdc-popover-scrim {
   position: fixed;
   inset: 0;
@@ -296,6 +305,12 @@
   min-width: 220px;
   max-width: 280px;
   align-items: stretch;
+  /* A long project list can exceed the viewport height; without this the
+     popover just overflows off-screen with nothing to scroll, so a wheel
+     scroll over it falls through to the page behind the scrim instead. */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .pdc-popover-kicker {
   font-size: 10px;
