@@ -682,6 +682,15 @@
   z-index: 3;
   background: var(--color-bg);
 }
+.ppr-timeline-header .ppr-label-col {
+  /* This one is an empty spacer (no chevron/name/client to give it height),
+     so under align-items: center it collapsed to 0 height — its opaque
+     background then covered nothing, letting the month band scrolled
+     underneath show through it. Stretched to the row's real height instead,
+     without touching the shared .ppr-overview-row alignment (which the
+     sparkline bar rows rely on to stay vertically centered). */
+  align-self: stretch;
+}
 
 /* — timesheets — */
 .ts-alert {
