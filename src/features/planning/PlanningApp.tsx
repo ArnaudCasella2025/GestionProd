@@ -44,7 +44,6 @@ export function PlanningApp() {
   return (
     <div className="pdc-layout">
       <NavRail
-        projects={projects}
         people={people}
         pendingRequestCount={pendingRequestCount}
         onOpenRequests={() => setRequestsOpen(true)}

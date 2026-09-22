@@ -54,18 +54,6 @@
   letter-spacing: 0.06em;
   color: color-mix(in srgb, var(--color-text) 45%, transparent);
 }
-.pdc-rail-legend h6 {
-  color: color-mix(in srgb, var(--color-text) 55%, transparent);
-  margin-bottom: var(--space-2);
-}
-.pdc-legend-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  padding: 3px 0;
-}
-
 /* — main content — */
 .pdc-main {
   flex: 1;

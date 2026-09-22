@@ -1,6 +1,6 @@
 import { logout, useAuthUser } from '../../lib/auth';
 import { useTestRole } from '../../lib/testRole';
-import { ACCESS_LEVEL_LABELS, type AccessLevel, type Person, type Project } from '../../types';
+import { ACCESS_LEVEL_LABELS, type AccessLevel, type Person } from '../../types';
 
 export type PlanningView =
   | 'charge'
@@ -13,7 +13,6 @@ export type PlanningView =
   | 'equipe';
 
 interface NavRailProps {
-  projects: Project[];
   people: Person[];
   pendingRequestCount: number;
   onOpenRequests: () => void;
@@ -34,7 +33,7 @@ const SECTIONS: { label: string; view: PlanningView; financialOnly?: boolean; hi
 
 const ACCESS_LEVELS: AccessLevel[] = ['admin', 'responsable', 'user'];
 
-export function NavRail({ projects, people, pendingRequestCount, onOpenRequests, activeView, onNavigate }: NavRailProps) {
+export function NavRail({ people, pendingRequestCount, onOpenRequests, activeView, onNavigate }: NavRailProps) {
   const { user } = useAuthUser();
   const { role, setRole, personId, setPersonId } = useTestRole();
   const canSeeFinancials = role !== 'user';
@@ -69,16 +68,6 @@ export function NavRail({ projects, people, pendingRequestCount, onOpenRequests,
           </li>
         ))}
       </ul>
-
-      <div className="pdc-rail-legend">
-        <h6>Projets</h6>
-        {projects.map((project) => (
-          <div key={project.id} className="pdc-legend-row">
-            <span className="pdc-color-dot" style={{ background: project.color }} />
-            {project.name}
-          </div>
-        ))}
-      </div>
 
       <div className="pdc-rail-account">
         <div className="pdc-rail-account-email" title={user?.email ?? undefined}>
