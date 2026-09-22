@@ -8,7 +8,7 @@ interface ProjectModalProps {
    * Responsable creating it, so they own it by default). Ignored when editing. */
   defaultResponsableId?: string;
   people: Person[];
-  onSave: (data: { name: string; client: string; color: string; budget: number; description: string; responsableId?: string }) => void;
+  onSave: (data: { name: string; client: string; color: string; budget: number; description: string; responsableId: string | null }) => void;
   onClose: () => void;
 }
 
@@ -32,7 +32,7 @@ export function ProjectModal({ initial, defaultResponsableId, people, onSave, on
       color,
       budget: budgetNumber,
       description: description.trim(),
-      responsableId: responsableId || undefined,
+      responsableId: responsableId || null,
     });
   };
 
@@ -82,7 +82,7 @@ export function ProjectModal({ initial, defaultResponsableId, people, onSave, on
               className="input"
               type="number"
               min={0}
-              step={1000}
+              step={1}
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
               required

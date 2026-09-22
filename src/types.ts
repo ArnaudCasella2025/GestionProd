@@ -85,9 +85,10 @@ export interface Project {
   budget: number;
   description?: string;
   /** Person.id of the team member responsible for this project — the only
-   * non-admin allowed to modify it. Unset means no responsable assigned yet
-   * (only Admin can modify until one is set). */
-  responsableId?: string;
+   * non-admin allowed to modify it. null/unset means no responsable assigned
+   * yet (only Admin can modify until one is set). Stored as null rather than
+   * left out of the document, since Firestore rejects `undefined` values. */
+  responsableId?: string | null;
 }
 
 export type DayHalf = 'AM' | 'PM';
