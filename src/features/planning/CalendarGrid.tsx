@@ -25,6 +25,10 @@ interface CalendarGridProps {
 }
 
 const ROW_HEIGHT = 52;
+// Matches .pdc-resources-header/.pdc-resource-col's width in app.css — kept
+// in sync manually, same as the Plan de production overview's own copy of
+// this same constant.
+const RESOURCE_COL_WIDTH = 236;
 
 export function CalendarGrid({
   people,
@@ -53,19 +57,8 @@ export function CalendarGrid({
 
   return (
     <div className="pdc-grid-wrap">
-      <div className="pdc-resources">
+      <div className="pdc-header-row">
         <div className="pdc-resources-header" />
-        {people.map((person) => (
-          <div className="pdc-resource-row" key={person.id} style={{ height: ROW_HEIGHT }}>
-            <div className="pdc-resource-name">{person.name}</div>
-            <div className="pdc-resource-meta">
-              {canSeeFinancials ? `${person.role} · ${person.dailyRate}€/j` : person.role}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="pdc-scroll">
         <div style={{ width: totalWidth }}>
           <div className="pdc-month-band">
             {monthGroups.map((group, i) => (
@@ -85,36 +78,46 @@ export function CalendarGrid({
               </div>
             ))}
           </div>
+        </div>
+      </div>
 
-          <div className="pdc-body" onMouseUp={onCellMouseUp} onMouseLeave={onCellMouseUp}>
-            {todayIdx >= 0 && (
-              <div
-                className="pdc-today-line"
-                style={{ left: units.slice(0, todayIdx).reduce((s, u) => s + u.widthPx, 0) }}
-              />
-            )}
+      <div className="pdc-body" onMouseUp={onCellMouseUp} onMouseLeave={onCellMouseUp}>
+        {todayIdx >= 0 && (
+          <div
+            className="pdc-today-line"
+            style={{ left: RESOURCE_COL_WIDTH + units.slice(0, todayIdx).reduce((s, u) => s + u.widthPx, 0) }}
+          />
+        )}
 
-            {people.map((person, rowIdx) => {
-              const personBookings = bookings.filter((b) => b.personId === person.id);
-              const conflictDays = conflictsByPerson.get(person.id);
+        {people.map((person, rowIdx) => {
+          const personBookings = bookings.filter((b) => b.personId === person.id);
+          const conflictDays = conflictsByPerson.get(person.id);
 
-              return (
-                <div className="pdc-row" key={person.id} style={{ height: ROW_HEIGHT }}>
-                  {units.map((unit, colIdx) => {
-                    const isSelected =
-                      selRows && selCols && rowIdx >= selRows[0] && rowIdx <= selRows[1] && colIdx >= selCols[0] && colIdx <= selCols[1];
-                    return (
-                      <div
-                        key={unit.key}
-                        className={`pdc-cell${isSelected ? ' is-selected' : ''}${unit.isToday ? ' is-today' : ''}${unit.isWeekend ? ' is-weekend' : ''}`}
-                        style={{ width: unit.widthPx }}
-                        onMouseDown={() => onCellMouseDown(rowIdx, colIdx)}
-                        onMouseEnter={() => onCellMouseEnter(rowIdx, colIdx)}
-                      />
-                    );
-                  })}
+          return (
+            <div className="pdc-row" key={person.id} style={{ height: ROW_HEIGHT }}>
+              <div className="pdc-resource-col">
+                <div className="pdc-resource-name">{person.name}</div>
+                <div className="pdc-resource-meta">
+                  {canSeeFinancials ? `${person.role} · ${person.dailyRate}€/j` : person.role}
+                </div>
+              </div>
 
-                  {personBookings.flatMap((booking) => {
+              <div className="pdc-timeline-col" style={{ width: totalWidth }}>
+                {units.map((unit, colIdx) => {
+                  const isSelected =
+                    selRows && selCols && rowIdx >= selRows[0] && rowIdx <= selRows[1] && colIdx >= selCols[0] && colIdx <= selCols[1];
+                  return (
+                    <div
+                      key={unit.key}
+                      className={`pdc-cell${isSelected ? ' is-selected' : ''}${unit.isToday ? ' is-today' : ''}${unit.isWeekend ? ' is-weekend' : ''}`}
+                      style={{ width: unit.widthPx }}
+                      onMouseDown={() => onCellMouseDown(rowIdx, colIdx)}
+                      onMouseEnter={() => onCellMouseEnter(rowIdx, colIdx)}
+                    />
+                  );
+                })}
+
+                {personBookings.flatMap((booking) => {
                     const range = unitRangeForDates(units, booking.startDate, booking.endDate);
                     if (!range) return [];
                     const [startIdx, endIdx] = range;
@@ -183,10 +186,9 @@ export function CalendarGrid({
                     });
                   })}
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              </div>
+            );
+          })}
       </div>
     </div>
   );

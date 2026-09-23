@@ -89,7 +89,7 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
   const handleGoToPerson = useCallback((personId: string) => {
     const idx = people.findIndex((p) => p.id === personId);
     if (idx === -1) return;
-    const rowEl = document.querySelectorAll('.pdc-resource-row')[idx];
+    const rowEl = document.querySelectorAll('.pdc-row')[idx];
     rowEl?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [people]);
 

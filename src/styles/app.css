@@ -126,29 +126,53 @@
 }
 
 /* — calendar grid — */
+/* One scroll container for both axes (like the Plan de production overview
+   below), with the resource column pinned via position: sticky while
+   scrolling horizontally, and the header row pinned while scrolling
+   vertically — instead of two separately-scrolling siblings, which can't
+   stay in sync with each other on the vertical axis. Bounded height so the
+   grid's own scrollbars stay reachable instead of running off the bottom
+   of a page taller than the viewport. */
 .pdc-grid-wrap {
-  display: flex;
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow: auto;
+  background: var(--color-bg);
+  max-height: calc(100vh - 320px);
+  min-height: 240px;
+}
+.pdc-header-row {
+  display: flex;
+  width: fit-content;
+  position: sticky;
+  top: 0;
+  z-index: 3;
   background: var(--color-bg);
 }
-.pdc-resources {
+.pdc-resources-header {
   width: 236px;
   flex: none;
-  border-right: 1px solid var(--color-divider);
-}
-.pdc-resources-header {
   height: 60px;
+  border-right: 1px solid var(--color-divider);
   border-bottom: 1px solid var(--color-divider);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-bg);
 }
-.pdc-resource-row {
+.pdc-resource-col {
+  width: 236px;
+  flex: none;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 2px;
   padding: 0 var(--space-3);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  border-right: 1px solid var(--color-divider);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-bg);
 }
 .pdc-resource-name {
   font-family: var(--font-heading);
@@ -160,10 +184,6 @@
   color: color-mix(in srgb, var(--color-text) 55%, transparent);
 }
 
-.pdc-scroll {
-  flex: 1;
-  overflow-x: auto;
-}
 .pdc-month-band {
   height: 28px;
   display: flex;
@@ -206,11 +226,16 @@
 
 .pdc-body {
   position: relative;
+  width: fit-content;
 }
 .pdc-row {
-  position: relative;
   display: flex;
+  width: fit-content;
   border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+.pdc-timeline-col {
+  position: relative;
+  flex: none;
 }
 .pdc-cell {
   flex: none;
@@ -863,12 +888,37 @@
  * full container width leaves huge empty gaps between them. Sized to its
  * own content instead; the wrapping overflow-x: auto div still kicks in
  * and scrolls normally once a resource has enough projects to need it. */
+.pa-table-wrap {
+  overflow: auto;
+  border-radius: var(--radius-md);
+  /* Same reasoning as .pdc-grid-wrap and .ppr-project-list: bounded so the
+     table's own scrollbars stay reachable, and so the sticky header/first
+     column below have a scrolling ancestor to pin themselves against. */
+  max-height: calc(100vh - 420px);
+  min-height: 240px;
+}
 .pa-table {
   width: auto;
   min-width: 320px;
 }
 .pa-table th {
   vertical-align: top;
+}
+.pa-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--color-bg);
+}
+.pa-table td:first-child,
+.pa-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-bg);
+}
+.pa-table thead th:first-child {
+  z-index: 3;
 }
 /* A bluish wash over the whole "Réel" table so it's never mistaken for the
  * editable "Officiel" plan at a glance. */
@@ -877,6 +927,13 @@
 }
 .pa-table-reel thead th {
   background: color-mix(in srgb, var(--color-accent-100) 60%, transparent);
+}
+/* The sticky header/first-column cells need an OPAQUE background (unlike
+   the translucent wash above) — otherwise the rows scrolling underneath
+   them would show through. */
+.pa-table-reel td:first-child,
+.pa-table-reel th:first-child {
+  background: var(--color-accent-100);
 }
 .pa-budget-hint {
   font-family: var(--font-body);

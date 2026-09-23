@@ -211,7 +211,7 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
       ) : relevantProjects.length === 0 ? (
         <p className="text-muted">Aucun projet pour cette ressource pour l'instant.</p>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
+        <div className="pa-table-wrap">
           <table className={`table pa-table${mode === 'reel' ? ' pa-table-reel' : ''}`}>
             <thead>
               <tr>
