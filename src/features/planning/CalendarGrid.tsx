@@ -1,8 +1,16 @@
 import type { CSSProperties, MouseEvent } from 'react';
+import { fromISODate } from '../../lib/dates';
 import type { Booking, Person, Project } from '../../types';
-import { bookingLabel } from './calc';
+import { bookingLabel, isPersonCustomOffDay } from './calc';
 import { groupByMonth, splitAtWeekends, unitRangeForDates, type TimeUnit } from './timeUnits';
 import { useTestRole } from '../../lib/testRole';
+
+/** A person's configured off-day only applies to day-granularity units — the
+ * "année" zoom's per-week columns can't represent a single weekday off. */
+function isPersonDayOff(person: Person, unit: TimeUnit): boolean {
+  if (unit.isWeekend || unit.startIso !== unit.endIso) return false;
+  return isPersonCustomOffDay(person, fromISODate(unit.startIso));
+}
 
 export interface DragSelection {
   rowA: number;
@@ -109,7 +117,7 @@ export function CalendarGrid({
                   return (
                     <div
                       key={unit.key}
-                      className={`pdc-cell${isSelected ? ' is-selected' : ''}${unit.isToday ? ' is-today' : ''}${unit.isWeekend ? ' is-weekend' : ''}`}
+                      className={`pdc-cell${isSelected ? ' is-selected' : ''}${unit.isToday ? ' is-today' : ''}${unit.isWeekend ? ' is-weekend' : ''}${isPersonDayOff(person, unit) ? ' is-day-off' : ''}`}
                       style={{ width: unit.widthPx }}
                       onMouseDown={() => onCellMouseDown(rowIdx, colIdx)}
                       onMouseEnter={() => onCellMouseEnter(rowIdx, colIdx)}
@@ -128,9 +136,10 @@ export function CalendarGrid({
                       conflictDays &&
                       units.slice(startIdx, endIdx + 1).some((u) => conflictDays.has(u.startIso));
 
-                    // Skip weekend columns instead of drawing one bar across them —
+                    // Skip weekend columns — and this person's own configured
+                    // days off — instead of drawing one bar across them:
                     // nobody is booked to work on a non-worked day.
-                    const segments = splitAtWeekends(units, startIdx, endIdx);
+                    const segments = splitAtWeekends(units, startIdx, endIdx, (unit) => isPersonDayOff(person, unit));
 
                     // Day-granularity zooms only: trim half a column off the very
                     // start/end of the booking when it begins or ends mid-day.

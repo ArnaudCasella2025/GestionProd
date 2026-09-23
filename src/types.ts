@@ -88,6 +88,12 @@ export interface Person {
   /** Person.id of this person's manager (an Admin or Responsable), who
    * validates their absence requests. null/unset means none assigned. */
   managerId?: string | null;
+  /** Which weekdays (1=Monday..5=Friday, matching Date#getDay()) this person
+   * actually works, for someone on fewer than 5 workDaysPerWeek (e.g. a
+   * 4/5e off every Wednesday). null/unset means no fixed pattern has been
+   * configured yet — nothing is blocked until it is. Weekends are handled
+   * separately and are never part of this list. */
+  workingWeekdays?: number[] | null;
 }
 
 export type ProjectStatus = 'sous_controle' | 'tendu' | 'depassement';

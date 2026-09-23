@@ -43,7 +43,7 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
   const units = useMemo(() => buildUnits(anchor, zoom), [anchor, zoom]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
-  const conflictsByPerson = useMemo(() => computeConflictDays(bookings), [bookings]);
+  const conflictsByPerson = useMemo(() => computeConflictDays(bookings, people), [bookings, people]);
 
   const {
     dragSelection,
@@ -58,7 +58,7 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
     handleBookingClick,
   } = useBookingGrid(people, units);
 
-  const totalDaysReserved = useMemo(() => totalPersonDaysReserved(bookings), [bookings]);
+  const totalDaysReserved = useMemo(() => totalPersonDaysReserved(bookings, people), [bookings, people]);
   const conflictCount = useMemo(
     () => Array.from(conflictsByPerson.values()).reduce((sum, days) => sum + days.size, 0),
     [conflictsByPerson],

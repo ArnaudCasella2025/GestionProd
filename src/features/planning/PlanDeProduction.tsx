@@ -31,7 +31,7 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
   const units = useMemo(() => buildUnits(anchor, 'annee'), [anchor]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
-  const conflictsByPerson = useMemo(() => computeConflictDays(bookings), [bookings]);
+  const conflictsByPerson = useMemo(() => computeConflictDays(bookings, people), [bookings, people]);
 
   // The overview below uses the exact same fixed per-week pixel width as the
   // expanded per-project grids (CalendarGrid) — not a percentage of the

@@ -234,8 +234,10 @@
   border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 .pdc-timeline-col {
+  display: flex;
   position: relative;
   flex: none;
+  height: 100%;
 }
 .pdc-cell {
   flex: none;
@@ -246,6 +248,17 @@
 }
 .pdc-cell.is-weekend {
   background: var(--color-neutral-200);
+}
+/* A part-time person's own configured day off — a hatch pattern instead of
+   the weekend's flat tint, so the two read as distinct at a glance. */
+.pdc-cell.is-day-off {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-200),
+    var(--color-neutral-200) 4px,
+    var(--color-neutral-100) 4px,
+    var(--color-neutral-100) 8px
+  );
 }
 .pdc-cell.is-selected {
   background: color-mix(in srgb, var(--color-accent) 22%, transparent);
@@ -1049,6 +1062,19 @@
 }
 .tmm-add-record .field {
   width: 130px;
+}
+.tmm-weekday-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+}
+.tmm-weekday-warning {
+  color: var(--color-accent-2-700);
 }
 
 /* — auth pages — */

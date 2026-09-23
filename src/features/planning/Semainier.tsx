@@ -33,7 +33,7 @@ export function Semainier({ people, projects, bookings }: SemainierProps) {
   const selectedPeople = useMemo(() => (person ? [person] : []), [person]);
   const units = useMemo(() => buildUnits(anchor, zoom), [anchor, zoom]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
-  const conflictsByPerson = useMemo(() => computeConflictDays(bookings), [bookings]);
+  const conflictsByPerson = useMemo(() => computeConflictDays(bookings, people), [bookings, people]);
 
   const responsablePersonId = resolveTestPersonId(testPersonId, people);
   const bookableProjects =

@@ -29,11 +29,19 @@ interface TeamMemberModalProps {
     teletravailDaysPerWeek: number;
     workDaysPerWeek: number;
     managerId: string | null;
+    workingWeekdays: number[] | null;
   }) => void;
   onClose: () => void;
 }
 
 const ACCESS_LEVELS: AccessLevel[] = ['admin', 'responsable', 'user'];
+const WEEKDAY_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: 'Lundi' },
+  { value: 2, label: 'Mardi' },
+  { value: 3, label: 'Mercredi' },
+  { value: 4, label: 'Jeudi' },
+  { value: 5, label: 'Vendredi' },
+];
 
 export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMemberModalProps) {
   const [name, setName] = useState(initial?.name ?? '');
@@ -45,6 +53,7 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
     String(initial?.teletravailDaysPerWeek ?? DEFAULT_TELETRAVAIL_DAYS_PER_WEEK),
   );
   const [workDaysPerWeek, setWorkDaysPerWeek] = useState(String(initial?.workDaysPerWeek ?? DEFAULT_WORK_DAYS_PER_WEEK));
+  const [workingWeekdays, setWorkingWeekdays] = useState<number[]>(initial?.workingWeekdays ?? []);
   const [managerId, setManagerId] = useState(initial?.managerId ?? '');
   const [salaryHistory, setSalaryHistory] = useState<SalaryRecord[]>(initial?.salaryHistory ?? []);
 
@@ -70,6 +79,11 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
   const rttNumber = Number(rttPerYear);
   const teletravailNumber = Number(teletravailDaysPerWeek);
   const workDaysNumber = Number(workDaysPerWeek);
+  // Below 5 days/week, the admin must say exactly which weekdays those are —
+  // this is what Plan de charge actually enforces per person, so a count
+  // alone (e.g. "4") is never enough to know it's Mon-Thu vs. Tue-Fri.
+  const needsWeekdayPicker = Number.isFinite(workDaysNumber) && workDaysNumber > 0 && workDaysNumber < 5;
+  const weekdaysValid = !needsWeekdayPicker || workingWeekdays.length === workDaysNumber;
   const otherFieldsValid =
     name.trim().length > 0 &&
     Number.isFinite(congesNumber) &&
@@ -80,8 +94,13 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
     teletravailNumber >= 0 &&
     Number.isFinite(workDaysNumber) &&
     workDaysNumber > 0 &&
-    workDaysNumber <= 7;
+    workDaysNumber <= 7 &&
+    weekdaysValid;
   const isValid = otherFieldsValid && effectiveRate != null && effectiveRate > 0;
+
+  function toggleWeekday(day: number) {
+    setWorkingWeekdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b)));
+  }
 
   const recordGrossNumber = Number(recordGross);
   const recordChargesNumber = Number(recordCharges);
@@ -133,6 +152,7 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
       teletravailDaysPerWeek: teletravailNumber,
       workDaysPerWeek: workDaysNumber,
       managerId: managerId || null,
+      workingWeekdays: needsWeekdayPicker ? workingWeekdays : null,
     });
   };
 
@@ -304,6 +324,29 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
             />
           </div>
         </div>
+
+        {needsWeekdayPicker && (
+          <div className="field">
+            <label>Jours travaillés</label>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              {WEEKDAY_OPTIONS.map((day) => (
+                <label key={day.value} className="tmm-weekday-toggle">
+                  <input
+                    type="checkbox"
+                    checked={workingWeekdays.includes(day.value)}
+                    onChange={() => toggleWeekday(day.value)}
+                  />
+                  {day.label}
+                </label>
+              ))}
+            </div>
+            <p className={`text-muted${weekdaysValid ? '' : ' tmm-weekday-warning'}`} style={{ fontSize: 12, marginTop: 4 }}>
+              {weekdaysValid
+                ? "Ces jours seront bloqués pour l'affectation sur Plan de charge le reste de la semaine."
+                : `Sélectionnez exactement ${workDaysNumber} jour${workDaysNumber > 1 ? 's' : ''} (${workingWeekdays.length} sélectionné${workingWeekdays.length > 1 ? 's' : ''}).`}
+            </p>
+          </div>
+        )}
 
         <div className="field">
           <label htmlFor="team-manager">Manager</label>

@@ -77,10 +77,10 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
   function daysFor(projectId: string, month: number): number {
     const relevant = personBookings.filter((b) => b.projectId === projectId);
     if (mode === 'reel') {
-      return realDaysInMonth(relevant, personTimesheets, projectId, year, month, todayIso);
+      return realDaysInMonth(relevant, personTimesheets, projectId, year, month, todayIso, person);
     }
     const override = overrideByKey.get(`${projectId}__${month}`);
-    return override ? override.days : bookedDaysInMonth(relevant, year, month);
+    return override ? override.days : bookedDaysInMonth(relevant, year, month, person);
   }
 
   /** The value to display/total for a cell, in the current unit. In euros this
@@ -91,12 +91,12 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
     const fallbackRate = person?.dailyRate ?? 0;
     const relevant = personBookings.filter((b) => b.projectId === projectId);
     if (mode === 'reel') {
-      return realCostInMonth(relevant, personTimesheets, projectId, year, month, todayIso, person?.salaryHistory, fallbackRate);
+      return realCostInMonth(relevant, personTimesheets, projectId, year, month, todayIso, person?.salaryHistory, fallbackRate, person);
     }
     const override = overrideByKey.get(`${projectId}__${month}`);
     // A manual override has no date to look a rate up for — use today's rate.
     if (override) return override.days * fallbackRate;
-    return bookedCostInMonth(relevant, year, month, person?.salaryHistory, fallbackRate);
+    return bookedCostInMonth(relevant, year, month, person?.salaryHistory, fallbackRate, person);
   }
 
   function formatCell(amount: number): string {

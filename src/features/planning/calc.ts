@@ -21,6 +21,14 @@ export function bookingLabel(booking: Booking, project: Project | undefined): st
   return ABSENCE_LABELS[booking.absenceType!];
 }
 
+/** Whether `date` is one of this person's configured non-working weekdays
+ * (e.g. a 4/5e off every Wednesday) — separate from weekends, which every
+ * caller already handles on its own. False when no pattern is configured. */
+export function isPersonCustomOffDay(person: Person | undefined, date: Date): boolean {
+  if (!person?.workingWeekdays) return false;
+  return !person.workingWeekdays.includes(date.getDay());
+}
+
 /** The [earliest start, latest end] of a project's bookings, or null if it has none. */
 export function projectDateRange(bookings: Booking[], projectId: string): { start: string; end: string } | null {
   const relevant = projectBookingsFor(bookings, projectId);
@@ -92,6 +100,7 @@ function sumDailyCost(booking: Booking, person: Person | undefined, dayFilter: (
   const end = fromISODate(booking.endDate);
   let total = 0;
   for (let d = start; d <= end; d = addDays(d, 1)) {
+    if (isPersonCustomOffDay(person, d)) continue;
     const iso = toISODate(d);
     if (dayFilter(iso)) total += dailyRateOn(person.salaryHistory, iso, person.dailyRate) * dayFraction(booking, iso);
   }
@@ -161,15 +170,18 @@ export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
  * the same half of the day — a double-booking conflict. A morning booking on
  * one project and an afternoon booking on another is not a conflict.
  */
-export function computeConflictDays(bookings: Booking[]): Map<string, Set<string>> {
+export function computeConflictDays(bookings: Booking[], people: Person[]): Map<string, Set<string>> {
+  const peopleById = new Map(people.map((p) => [p.id, p]));
   const conflictsByPerson = new Map<string, Set<string>>();
   const countByPersonDayHalf = new Map<string, number>();
 
   for (const booking of bookings) {
     if (!booking.projectId) continue;
+    const person = peopleById.get(booking.personId);
     const start = fromISODate(booking.startDate);
     const end = fromISODate(booking.endDate);
     for (let d = start; d <= end; d = addDays(d, 1)) {
+      if (isPersonCustomOffDay(person, d)) continue;
       const iso = toISODate(d);
       for (const half of coveredHalves(booking, iso)) {
         const key = `${booking.personId}__${iso}__${half}`;
@@ -202,12 +214,15 @@ export function conflictingBookingsForPerson(personId: string, bookings: Booking
   });
 }
 
-export function totalPersonDaysReserved(bookings: Booking[]): number {
+export function totalPersonDaysReserved(bookings: Booking[], people: Person[]): number {
+  const peopleById = new Map(people.map((p) => [p.id, p]));
   let total = 0;
   for (const booking of bookings) {
+    const person = peopleById.get(booking.personId);
     const start = fromISODate(booking.startDate);
     const end = fromISODate(booking.endDate);
     for (let d = start; d <= end; d = addDays(d, 1)) {
+      if (isPersonCustomOffDay(person, d)) continue;
       total += dayFraction(booking, toISODate(d));
     }
   }

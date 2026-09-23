@@ -1,6 +1,6 @@
 import { isWeekend, toISODate } from '../../lib/dates';
-import { HOURS_PER_DAY, type Booking, type SalaryRecord, type TimesheetDay } from '../../types';
-import { coveredHalves } from './calc';
+import { HOURS_PER_DAY, type Booking, type Person, type SalaryRecord, type TimesheetDay } from '../../types';
+import { coveredHalves, isPersonCustomOffDay } from './calc';
 import { dailyRateOn } from './salaryCalc';
 
 function daysInMonth(year: number, month: number): number {
@@ -8,15 +8,16 @@ function daysInMonth(year: number, month: number): number {
 }
 
 /** Days booked (Plan de charge) on a project within one calendar month, for
- * bookings already filtered to one person and one project. Weekends don't
- * count as bookable capacity, even when a booking's date range spans one. */
-export function bookedDaysInMonth(personProjectBookings: Booking[], year: number, month: number): number {
+ * bookings already filtered to one person and one project. Weekends, and
+ * this person's own configured non-working weekdays, don't count as
+ * bookable capacity, even when a booking's date range spans one. */
+export function bookedDaysInMonth(personProjectBookings: Booking[], year: number, month: number, person?: Person): number {
   if (personProjectBookings.length === 0) return 0;
   const total = daysInMonth(year, month);
   let sum = 0;
   for (let day = 1; day <= total; day++) {
     const date = new Date(year, month - 1, day);
-    if (isWeekend(date)) continue;
+    if (isWeekend(date) || isPersonCustomOffDay(person, date)) continue;
     const iso = toISODate(date);
     for (const booking of personProjectBookings) sum += coveredHalves(booking, iso).length * 0.5;
   }
@@ -35,13 +36,14 @@ export function realDaysInMonth(
   year: number,
   month: number,
   todayIso: string,
+  person?: Person,
 ): number {
   const total = daysInMonth(year, month);
   const timesheetByDate = new Map(personTimesheets.map((t) => [t.date, t]));
   let sum = 0;
   for (let day = 1; day <= total; day++) {
     const date = new Date(year, month - 1, day);
-    if (isWeekend(date)) continue;
+    if (isWeekend(date) || isPersonCustomOffDay(person, date)) continue;
     const iso = toISODate(date);
     if (iso <= todayIso) {
       const declared = timesheetByDate.get(iso);
@@ -61,13 +63,14 @@ export function bookedCostInMonth(
   month: number,
   salaryHistory: SalaryRecord[] | undefined,
   fallbackRate: number,
+  person?: Person,
 ): number {
   if (personProjectBookings.length === 0) return 0;
   const total = daysInMonth(year, month);
   let sum = 0;
   for (let day = 1; day <= total; day++) {
     const date = new Date(year, month - 1, day);
-    if (isWeekend(date)) continue;
+    if (isWeekend(date) || isPersonCustomOffDay(person, date)) continue;
     const iso = toISODate(date);
     const rate = dailyRateOn(salaryHistory, iso, fallbackRate);
     for (const booking of personProjectBookings) sum += coveredHalves(booking, iso).length * 0.5 * rate;
@@ -86,13 +89,14 @@ export function realCostInMonth(
   todayIso: string,
   salaryHistory: SalaryRecord[] | undefined,
   fallbackRate: number,
+  person?: Person,
 ): number {
   const total = daysInMonth(year, month);
   const timesheetByDate = new Map(personTimesheets.map((t) => [t.date, t]));
   let sum = 0;
   for (let day = 1; day <= total; day++) {
     const date = new Date(year, month - 1, day);
-    if (isWeekend(date)) continue;
+    if (isWeekend(date) || isPersonCustomOffDay(person, date)) continue;
     const iso = toISODate(date);
     const rate = dailyRateOn(salaryHistory, iso, fallbackRate);
     if (iso <= todayIso) {
