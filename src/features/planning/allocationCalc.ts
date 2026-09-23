@@ -72,7 +72,7 @@ export function bookedCostInMonth(
     const date = new Date(year, month - 1, day);
     if (isWeekend(date) || isPersonCustomOffDay(person, date)) continue;
     const iso = toISODate(date);
-    const rate = dailyRateOn(salaryHistory, iso, fallbackRate);
+    const rate = dailyRateOn(salaryHistory, iso, fallbackRate, person?.socialChargesByMonth);
     for (const booking of personProjectBookings) sum += coveredHalves(booking, iso).length * 0.5 * rate;
   }
   return sum;
@@ -98,7 +98,7 @@ export function realCostInMonth(
     const date = new Date(year, month - 1, day);
     if (isWeekend(date) || isPersonCustomOffDay(person, date)) continue;
     const iso = toISODate(date);
-    const rate = dailyRateOn(salaryHistory, iso, fallbackRate);
+    const rate = dailyRateOn(salaryHistory, iso, fallbackRate, person?.socialChargesByMonth);
     if (iso <= todayIso) {
       const declared = timesheetByDate.get(iso);
       if (declared) sum += (declared.hours.filter((h) => h?.projectId === projectId).length / HOURS_PER_DAY) * rate;

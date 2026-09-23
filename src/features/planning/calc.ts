@@ -102,7 +102,9 @@ function sumDailyCost(booking: Booking, person: Person | undefined, dayFilter: (
   for (let d = start; d <= end; d = addDays(d, 1)) {
     if (isPersonCustomOffDay(person, d)) continue;
     const iso = toISODate(d);
-    if (dayFilter(iso)) total += dailyRateOn(person.salaryHistory, iso, person.dailyRate) * dayFraction(booking, iso);
+    if (dayFilter(iso)) {
+      total += dailyRateOn(person.salaryHistory, iso, person.dailyRate, person.socialChargesByMonth) * dayFraction(booking, iso);
+    }
   }
   return total;
 }

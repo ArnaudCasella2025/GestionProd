@@ -11,7 +11,8 @@ import {
   type Person,
   type SalaryRecord,
 } from '../../types';
-import { chargeAmount, dailyRateFor, dailyRateOn, recordEffectiveOn } from './salaryCalc';
+import { chargeAmount, dailyRateFor, dailyRateOn, recordEffectiveOn, socialChargesPercentOn } from './salaryCalc';
+import { SocialChargesModal } from './SocialChargesModal';
 
 interface TeamMemberModalProps {
   /** Present when editing an existing member; absent when creating a new one. */
@@ -30,6 +31,7 @@ interface TeamMemberModalProps {
     workDaysPerWeek: number;
     managerId: string | null;
     workingWeekdays: number[] | null;
+    socialChargesByMonth: Record<string, number>;
   }) => void;
   onClose: () => void;
 }
@@ -56,6 +58,8 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
   const [workingWeekdays, setWorkingWeekdays] = useState<number[]>(initial?.workingWeekdays ?? []);
   const [managerId, setManagerId] = useState(initial?.managerId ?? '');
   const [salaryHistory, setSalaryHistory] = useState<SalaryRecord[]>(initial?.salaryHistory ?? []);
+  const [socialChargesByMonth, setSocialChargesByMonth] = useState<Record<string, number>>(initial?.socialChargesByMonth ?? {});
+  const [chargesModalOpen, setChargesModalOpen] = useState(false);
 
   const managerCandidates = people.filter(
     (p) => p.id !== initial?.id && (p.accessLevel === 'admin' || p.accessLevel === 'responsable'),
@@ -64,14 +68,13 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
   const todayIso = toISODate(new Date());
   const [recordDate, setRecordDate] = useState(todayIso);
   const [recordGross, setRecordGross] = useState('');
-  const [recordCharges, setRecordCharges] = useState('');
   const hasSalaryHistory = salaryHistory.length > 0;
   // A person with no salary history yet (created before this feature existed)
   // keeps whatever flat rate they already had, until someone declares a real salary for them.
   const legacyRate = initial?.dailyRate;
   // Falls back to the person's last known rate if every salary record is dated
   // in the future (nothing is effective yet as of today).
-  const computedRate = hasSalaryHistory ? dailyRateOn(salaryHistory, todayIso, legacyRate ?? 0) : null;
+  const computedRate = hasSalaryHistory ? dailyRateOn(salaryHistory, todayIso, legacyRate ?? 0, socialChargesByMonth) : null;
   const hasEffectiveRecord = hasSalaryHistory && recordEffectiveOn(salaryHistory, todayIso) != null;
   const effectiveRate = computedRate ?? legacyRate ?? null;
 
@@ -103,13 +106,7 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
   }
 
   const recordGrossNumber = Number(recordGross);
-  const recordChargesNumber = Number(recordCharges);
-  const canAddRecord =
-    recordDate.trim().length > 0 &&
-    Number.isFinite(recordGrossNumber) &&
-    recordGrossNumber > 0 &&
-    Number.isFinite(recordChargesNumber) &&
-    recordChargesNumber >= 0;
+  const canAddRecord = recordDate.trim().length > 0 && Number.isFinite(recordGrossNumber) && recordGrossNumber > 0;
 
   // A filled-in but not-yet-added salary row shouldn't block saving — it's
   // easy to miss that "Ajouter" (for the row) is a separate click from
@@ -118,12 +115,11 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
 
   function addRecord() {
     if (!canAddRecord) return;
-    const record: SalaryRecord = { startDate: recordDate, grossMonthlySalary: recordGrossNumber, chargesPercent: recordChargesNumber };
+    const record: SalaryRecord = { startDate: recordDate, grossMonthlySalary: recordGrossNumber };
     // Replace any existing record for the same date, to allow correcting a mistake.
     setSalaryHistory((history) => [...history.filter((r) => r.startDate !== recordDate), record]);
     setRecordDate(todayIso);
     setRecordGross('');
-    setRecordCharges('');
   }
 
   function removeRecord(startDate: string) {
@@ -134,12 +130,10 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
     e.preventDefault();
     if (!canSubmit) return;
     const finalHistory = canAddRecord
-      ? [
-          ...salaryHistory.filter((r) => r.startDate !== recordDate),
-          { startDate: recordDate, grossMonthlySalary: recordGrossNumber, chargesPercent: recordChargesNumber },
-        ]
+      ? [...salaryHistory.filter((r) => r.startDate !== recordDate), { startDate: recordDate, grossMonthlySalary: recordGrossNumber }]
       : salaryHistory;
-    const finalRate = finalHistory.length > 0 ? dailyRateOn(finalHistory, todayIso, legacyRate ?? 0) : effectiveRate;
+    const finalRate =
+      finalHistory.length > 0 ? dailyRateOn(finalHistory, todayIso, legacyRate ?? 0, socialChargesByMonth) : effectiveRate;
     if (finalRate == null || finalRate <= 0) return;
     onSave({
       name: name.trim(),
@@ -153,13 +147,15 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
       workDaysPerWeek: workDaysNumber,
       managerId: managerId || null,
       workingWeekdays: needsWeekdayPicker ? workingWeekdays : null,
+      socialChargesByMonth,
     });
   };
 
   const sortedHistory = [...salaryHistory].sort((a, b) => b.startDate.localeCompare(a.startDate));
 
   return (
-    <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <>
+      <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <form className="dialog" style={{ width: 'min(520px, 100%)' }} onSubmit={handleSubmit}>
         <div className="dialog-title">{initial ? 'Modifier le membre' : 'Ajouter un membre'}</div>
 
@@ -185,7 +181,7 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
             <div className={`tmm-computed-rate${hasEffectiveRecord ? '' : ' tmm-computed-rate-pending'}`}>
               {computedRate!.toLocaleString('fr-FR')} €/j
               {hasEffectiveRecord
-                ? ' — calculé depuis le salaire ci-dessous'
+                ? ' — calculé depuis le salaire et les charges sociales ci-dessous'
                 : ' — dernier taux connu (le salaire ci-dessous n\'est pas encore effectif)'}
             </div>
           ) : legacyRate != null ? (
@@ -195,6 +191,14 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
           ) : (
             <div className="tmm-computed-rate tmm-computed-rate-pending">Aucun salaire renseigné — ajoutez-en un ci-dessous</div>
           )}
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ marginTop: 'var(--space-2)' }}
+            onClick={() => setChargesModalOpen(true)}
+          >
+            Charges sociales
+          </button>
         </div>
 
         <div className="field">
@@ -212,20 +216,23 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
                 </tr>
               </thead>
               <tbody>
-                {sortedHistory.map((record) => (
-                  <tr key={record.startDate}>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatFullDate(fromISODate(record.startDate))}</td>
-                    <td>{record.grossMonthlySalary.toLocaleString('fr-FR')} €</td>
-                    <td>{record.chargesPercent} %</td>
-                    <td>{chargeAmount(record).toLocaleString('fr-FR')} €</td>
-                    <td>{dailyRateFor(record).toLocaleString('fr-FR')} €/j</td>
-                    <td>
-                      <button type="button" className="btn btn-secondary" onClick={() => removeRecord(record.startDate)}>
-                        Retirer
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {sortedHistory.map((record) => {
+                  const percent = socialChargesPercentOn(socialChargesByMonth, salaryHistory, record.startDate);
+                  return (
+                    <tr key={record.startDate}>
+                      <td style={{ whiteSpace: 'nowrap' }}>{formatFullDate(fromISODate(record.startDate))}</td>
+                      <td>{record.grossMonthlySalary.toLocaleString('fr-FR')} €</td>
+                      <td>{percent} %</td>
+                      <td>{chargeAmount(record.grossMonthlySalary, percent).toLocaleString('fr-FR')} €</td>
+                      <td>{dailyRateFor(record.grossMonthlySalary, percent).toLocaleString('fr-FR')} €/j</td>
+                      <td>
+                        <button type="button" className="btn btn-secondary" onClick={() => removeRecord(record.startDate)}>
+                          Retirer
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -245,19 +252,6 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
                 step={1}
                 value={recordGross}
                 onChange={(e) => setRecordGross(e.target.value)}
-              />
-            </div>
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label htmlFor="tmm-record-charges">Charges (%)</label>
-              <input
-                id="tmm-record-charges"
-                type="number"
-                className="input"
-                min={0}
-                max={100}
-                step={0.1}
-                value={recordCharges}
-                onChange={(e) => setRecordCharges(e.target.value)}
               />
             </div>
             <button type="button" className="btn btn-secondary" onClick={addRecord} disabled={!canAddRecord}>
@@ -380,6 +374,19 @@ export function TeamMemberModal({ initial, people, onSave, onClose }: TeamMember
           </button>
         </div>
       </form>
-    </div>
+      </div>
+
+      {chargesModalOpen && (
+        <SocialChargesModal
+          chargesByMonth={socialChargesByMonth}
+          salaryHistory={salaryHistory}
+          onSave={(next) => {
+            setSocialChargesByMonth(next);
+            setChargesModalOpen(false);
+          }}
+          onClose={() => setChargesModalOpen(false)}
+        />
+      )}
+    </>
   );
 }

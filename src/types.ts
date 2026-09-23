@@ -54,8 +54,12 @@ export interface SalaryRecord {
   startDate: string;
   /** Monthly gross salary, in euros. */
   grossMonthlySalary: number;
-  /** Employer social-charges rate, as a percentage (e.g. 40 for 40%). */
-  chargesPercent: number;
+  /** Employer social-charges rate, as a percentage (e.g. 40 for 40%).
+   * Legacy — new records no longer set this; the rate now lives in
+   * Person.socialChargesByMonth instead, since it changes independently of
+   * salary (e.g. a yearly URSSAF rate change). Kept optional so old records
+   * created before that change still resolve a rate (see socialChargesPercentOn). */
+  chargesPercent?: number;
 }
 
 /** Conventional working days per month used to derive a daily rate from a
@@ -94,6 +98,12 @@ export interface Person {
    * configured yet — nothing is blocked until it is. Weekends are handled
    * separately and are never part of this list. */
   workingWeekdays?: number[] | null;
+  /** Employer social-charges rate by calendar month, keyed "YYYY-MM" (e.g.
+   * "2026-01" -> 42 for 42%). Set via the Équipe screen's "Charges sociales"
+   * modal. A month with no entry falls back to the closest earlier month
+   * that has one, then to the legacy per-record SalaryRecord.chargesPercent,
+   * then to 0 — see socialChargesPercentOn in salaryCalc.ts. */
+  socialChargesByMonth?: Record<string, number>;
 }
 
 export type ProjectStatus = 'sous_controle' | 'tendu' | 'depassement';
