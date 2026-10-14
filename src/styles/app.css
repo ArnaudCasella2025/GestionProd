@@ -301,6 +301,25 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Several touching same-project bars (e.g. one day per week spread across
+   adjacent "année" columns) merge into one seamless strip with a single
+   label spanning the whole run, rather than one truncated letter per day.
+   It's a separate element laid over the bars instead of living inside the
+   first one, which clips its own content to its own narrow box — and it
+   needs to outrank .pdc-bar's z-index (3) so the later, same-z-index bars
+   it overlaps don't paint over it on the DOM-order tie-break. */
+.pdc-bar-label-overlay {
+  position: absolute;
+  top: 6px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  color: var(--color-bg);
+  font-family: var(--font-body);
+  font-size: 11px;
+  pointer-events: none;
+  z-index: 4;
+}
 .pdc-bar.is-conflict {
   outline: 2px solid var(--color-accent-2);
   outline-offset: 1px;

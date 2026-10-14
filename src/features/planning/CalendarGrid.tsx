@@ -125,56 +125,150 @@ export function CalendarGrid({
                   );
                 })}
 
-                {personBookings.flatMap((booking) => {
-                    const range = unitRangeForDates(units, booking.startDate, booking.endDate);
-                    if (!range) return [];
-                    const [startIdx, endIdx] = range;
-                    const project = booking.projectId ? projectsById.get(booking.projectId) : undefined;
-                    const label = bookingLabel(booking, project);
-                    const hasConflict =
-                      booking.projectId &&
-                      conflictDays &&
-                      units.slice(startIdx, endIdx + 1).some((u) => conflictDays.has(u.startIso));
+                {(() => {
+                    interface BarSegment {
+                      booking: Booking;
+                      segStart: number;
+                      segEnd: number;
+                      segIdx: number;
+                      key: string;
+                      project?: Project;
+                      label: string;
+                      hasConflict: boolean;
+                      isDayUnit: boolean;
+                      left: number;
+                      width: number;
+                      leftTrimmed: boolean;
+                      rightTrimmed: boolean;
+                      noteDots: { key: string; left: number; note: string }[];
+                    }
 
-                    // Skip weekend columns — and this person's own configured
-                    // days off — instead of drawing one bar across them:
-                    // nobody is booked to work on a non-worked day.
-                    const segments = splitAtWeekends(units, startIdx, endIdx, (unit) => isPersonDayOff(person, unit));
+                    const allSegments: BarSegment[] = [];
 
-                    // Day-granularity zooms only: trim half a column off the very
-                    // start/end of the booking when it begins or ends mid-day.
-                    const isDayUnit = units[startIdx]?.startIso === units[startIdx]?.endIso;
+                    personBookings.forEach((booking) => {
+                      const range = unitRangeForDates(units, booking.startDate, booking.endDate);
+                      if (!range) return;
+                      const [startIdx, endIdx] = range;
+                      const project = booking.projectId ? projectsById.get(booking.projectId) : undefined;
+                      const label = bookingLabel(booking, project);
+                      const hasConflict = Boolean(
+                        booking.projectId &&
+                          conflictDays &&
+                          units.slice(startIdx, endIdx + 1).some((u) => conflictDays.has(u.startIso)),
+                      );
 
-                    return segments.map(([segStart, segEnd], segIdx) => {
-                      let left = units.slice(0, segStart).reduce((s, u) => s + u.widthPx, 0);
-                      let width = units.slice(segStart, segEnd + 1).reduce((s, u) => s + u.widthPx, 0);
+                      // Skip weekend columns — and this person's own configured
+                      // days off — instead of drawing one bar across them:
+                      // nobody is booked to work on a non-worked day.
+                      const segments = splitAtWeekends(units, startIdx, endIdx, (unit) => isPersonDayOff(person, unit));
 
-                      if (isDayUnit && segStart === startIdx && booking.startHalf === 'PM') {
-                        const half = units[segStart].widthPx / 2;
-                        left += half;
-                        width -= half;
-                      }
-                      if (isDayUnit && segEnd === endIdx && booking.endHalf === 'AM') {
-                        width -= units[segEnd].widthPx / 2;
-                      }
+                      // Day-granularity zooms only: trim half a column off the very
+                      // start/end of the booking when it begins or ends mid-day.
+                      const isDayUnit = units[startIdx]?.startIso === units[startIdx]?.endIso;
+
+                      segments.forEach(([segStart, segEnd], segIdx) => {
+                        let left = units.slice(0, segStart).reduce((s, u) => s + u.widthPx, 0);
+                        let width = units.slice(segStart, segEnd + 1).reduce((s, u) => s + u.widthPx, 0);
+                        const leftTrimmed = isDayUnit && segStart === startIdx && booking.startHalf === 'PM';
+                        const rightTrimmed = isDayUnit && segEnd === endIdx && booking.endHalf === 'AM';
+
+                        if (leftTrimmed) {
+                          const half = units[segStart].widthPx / 2;
+                          left += half;
+                          width -= half;
+                        }
+                        if (rightTrimmed) {
+                          width -= units[segEnd].widthPx / 2;
+                        }
+
+                        let noteDotCursor = 0;
+                        const noteDots: { key: string; left: number; note: string }[] = [];
+                        if (isDayUnit && booking.dayNotes) {
+                          for (let idx = segStart; idx <= segEnd; idx++) {
+                            const u = units[idx];
+                            const note = booking.dayNotes[u.startIso];
+                            if (note) {
+                              noteDots.push({ key: u.key, left: noteDotCursor + u.widthPx / 2 - 2, note });
+                            }
+                            noteDotCursor += u.widthPx;
+                          }
+                        }
+
+                        allSegments.push({
+                          booking,
+                          segStart,
+                          segEnd,
+                          segIdx,
+                          key: booking.projectId ?? `absence:${booking.absenceType}`,
+                          project,
+                          label,
+                          hasConflict,
+                          isDayUnit,
+                          left,
+                          width,
+                          leftTrimmed,
+                          rightTrimmed,
+                          noteDots,
+                        });
+                      });
+                    });
+
+                    allSegments.sort((a, b) => a.segStart - b.segStart);
+
+                    // Several bookings for the same project/absence that land
+                    // in immediately touching columns — e.g. one day per week
+                    // spread by "Nombre de jours à réserver" across several
+                    // adjacent week columns in "année" zoom — read as one
+                    // continuous assignment, not a row of separated chips, so
+                    // their shared edge loses its gutter and rounded corner
+                    // (each day still stays its own click target underneath).
+                    const connectsRight = allSegments.map((seg, i) => {
+                      const next = allSegments[i + 1];
+                      return Boolean(next && next.key === seg.key && next.segStart === seg.segEnd + 1 && !seg.rightTrimmed && !next.leftTrimmed);
+                    });
+                    const connectsLeft = allSegments.map((seg, i) => {
+                      const prev = allSegments[i - 1];
+                      return Boolean(prev && prev.key === seg.key && prev.segEnd === seg.segStart - 1 && !prev.rightTrimmed && !seg.leftTrimmed);
+                    });
+
+                    // A run's label can't just live inside its first bar's own
+                    // box when overflowing wider than it — same z-index
+                    // siblings paint in DOM order, so the later (touching)
+                    // bars would paint over it. It's rendered separately
+                    // instead, after every bar, so it naturally paints on top.
+                    const labelOverlays: { key: string; left: number; width: number; label: string }[] = [];
+
+                    const bars = allSegments.map((seg, i) => {
+                      const { booking, segIdx, project, label, hasConflict, left, width, noteDots } = seg;
+                      const connRight = connectsRight[i];
+                      const connLeft = connectsLeft[i];
 
                       const style: CSSProperties = {
                         left,
-                        width: Math.max(width - 3, 4),
+                        width: Math.max(connRight ? width : width - 3, 4),
                         background: project ? project.color : 'repeating-linear-gradient(45deg, var(--color-neutral-400), var(--color-neutral-400) 4px, var(--color-neutral-200) 4px, var(--color-neutral-200) 8px)',
                       };
+                      if (connLeft) {
+                        style.borderTopLeftRadius = 0;
+                        style.borderBottomLeftRadius = 0;
+                      }
+                      if (connRight) {
+                        style.borderTopRightRadius = 0;
+                        style.borderBottomRightRadius = 0;
+                      }
 
-                      let noteDotCursor = 0;
-                      const noteDots: { key: string; left: number; note: string }[] = [];
-                      if (isDayUnit && booking.dayNotes) {
-                        for (let idx = segStart; idx <= segEnd; idx++) {
-                          const u = units[idx];
-                          const note = booking.dayNotes[u.startIso];
-                          if (note) {
-                            noteDots.push({ key: u.key, left: noteDotCursor + u.widthPx / 2 - 2, note });
-                          }
-                          noteDotCursor += u.widthPx;
+                      // The label is only drawn on the first segment of a
+                      // connected run, sized to the run's full combined width
+                      // instead of clipped to this one day's narrow slice.
+                      const showLabel = segIdx === 0 && !connLeft;
+                      if (showLabel) {
+                        let runWidth = width;
+                        let cursor = i + 1;
+                        while (allSegments[cursor] && connectsRight[cursor - 1]) {
+                          runWidth += allSegments[cursor].width;
+                          cursor++;
                         }
+                        labelOverlays.push({ key: `${booking.id}-${segIdx}-label`, left, width: runWidth, label });
                       }
 
                       return (
@@ -186,14 +280,28 @@ export function CalendarGrid({
                           onClick={(e) => onBookingClick(booking, e)}
                           title={label}
                         >
-                          {segIdx === 0 && <span className="pdc-bar-label">{label}</span>}
                           {noteDots.map((dot) => (
                             <span key={dot.key} className="pdc-bar-note-dot" style={{ left: dot.left }} title={dot.note} />
                           ))}
                         </button>
                       );
                     });
-                  })}
+
+                    return (
+                      <>
+                        {bars}
+                        {labelOverlays.map((overlay) => (
+                          <span
+                            key={overlay.key}
+                            className="pdc-bar-label pdc-bar-label-overlay"
+                            style={{ left: overlay.left + 6, width: Math.max(overlay.width - 12, 0) }}
+                          >
+                            {overlay.label}
+                          </span>
+                        ))}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             );
