@@ -58,7 +58,7 @@ export function ProjectResourceGrid({
     handleCellMouseUp,
     applyBooking,
     handleBookingClick,
-  } = useBookingGrid(people, units);
+  } = useBookingGrid(people, units, bookings);
 
   const detailPerson = detailPanel ? peopleById.get(detailPanel.booking.personId) : undefined;
   const detailProject = detailPanel?.booking.projectId ? projectsById.get(detailPanel.booking.projectId) : undefined;
@@ -87,8 +87,8 @@ export function ProjectResourceGrid({
             projects={[project]}
             units={units}
             cols={createPopover.cols}
-            onSelectProject={(projectId, startHalf, endHalf) => applyBooking({ projectId, startHalf, endHalf })}
-            onSelectAbsence={(absenceType, startHalf, endHalf) => applyBooking({ absenceType, startHalf, endHalf })}
+            onSelectProject={(projectId, startHalf, endHalf, targetDays) => applyBooking({ projectId, startHalf, endHalf, targetDays })}
+            onSelectAbsence={(absenceType, startHalf, endHalf, targetDays) => applyBooking({ absenceType, startHalf, endHalf, targetDays })}
           />
         </>
       )}

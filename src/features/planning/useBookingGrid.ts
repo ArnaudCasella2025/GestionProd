@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type MouseEvent } from 'react';
 import { createBooking } from '../../lib/repository';
 import type { AbsenceType, Booking, DayHalf, Person } from '../../types';
+import { distributeDays } from './autoSchedule';
 import type { DragSelection } from './CalendarGrid';
 import type { TimeUnit } from './timeUnits';
 
@@ -22,7 +23,7 @@ interface DetailPanelState {
  * that lets you book people onto time-unit columns (Plan de charge's main
  * grid, and each expanded project's resource grid in Plan de production).
  */
-export function useBookingGrid(people: Person[], units: TimeUnit[]) {
+export function useBookingGrid(people: Person[], units: TimeUnit[], allBookings: Booking[]) {
   const [dragSelection, setDragSelection] = useState<DragSelection | null>(null);
   const isDragging = useRef(false);
   const [createPopover, setCreatePopover] = useState<CreatePopoverState | null>(null);
@@ -55,21 +56,38 @@ export function useBookingGrid(people: Person[], units: TimeUnit[]) {
   );
 
   const applyBooking = useCallback(
-    (payload: { projectId?: string; absenceType?: AbsenceType; startHalf: DayHalf; endHalf: DayHalf }) => {
+    (payload: { projectId?: string; absenceType?: AbsenceType; startHalf: DayHalf; endHalf: DayHalf; targetDays: number | null }) => {
       if (!createPopover) return;
       const [rowStart, rowEnd] = createPopover.rows;
       const [colStart, colEnd] = createPopover.cols;
       const startDate = units[colStart].startIso;
       const endDate = units[colEnd].endIso;
+      // Destructured out so each branch below builds its own payload —
+      // otherwise spreading `absenceType`/`projectId` unconditionally would
+      // write an explicit `undefined` for whichever one the caller didn't
+      // pass, and Firestore rejects that.
+      const { targetDays, startHalf, endHalf, ...idFields } = payload;
       for (let row = rowStart; row <= rowEnd; row++) {
         const person = people[row];
         if (!person) continue;
-        createBooking({ personId: person.id, startDate, endDate, ...payload }).catch(console.error);
+        if (targetDays == null) {
+          createBooking({ personId: person.id, startDate, endDate, startHalf, endHalf, ...idFields }).catch(console.error);
+        } else {
+          // Spread targetDays across the range instead of staffing it
+          // solid — same engine as Plan de production's "Planifier des
+          // jours", applied per person so each one's own off-days and
+          // existing bookings are taken into account individually.
+          const personBookings = allBookings.filter((b) => b.personId === person.id);
+          const { runs } = distributeDays(person, startDate, endDate, targetDays, personBookings);
+          for (const run of runs) {
+            createBooking({ personId: person.id, startDate: run.startDate, endDate: run.endDate, ...idFields }).catch(console.error);
+          }
+        }
       }
       setCreatePopover(null);
       setDragSelection(null);
     },
-    [createPopover, units, people],
+    [createPopover, units, people, allBookings],
   );
 
   const handleBookingClick = useCallback((booking: Booking, evt: MouseEvent) => {

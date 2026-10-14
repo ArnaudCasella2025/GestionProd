@@ -24,6 +24,23 @@ function isWorkableDay(person: Person, date: Date): boolean {
   return !isWeekend(date) && !isPersonCustomOffDay(person, date);
 }
 
+/** Weekday count (weekends excluded) in an inclusive date range — the
+ * default "book every day" target shown before anyone picks a smaller
+ * number of days to auto-distribute instead. Doesn't account for a
+ * specific person's own off-days, since a multi-row drag-selection can
+ * cover several people at once; distributeDays still handles those
+ * per-person once a target day count is chosen. */
+export function countWeekdays(startIso: string, endIso: string): number {
+  let count = 0;
+  let d = fromISODate(startIso);
+  const end = fromISODate(endIso);
+  while (d <= end) {
+    if (!isWeekend(d)) count++;
+    d = addDays(d, 1);
+  }
+  return count;
+}
+
 /** Picks `count` items from a sorted list, spread as evenly as possible
  * across it, rather than just taking the first `count`. */
 function pickEvenly(items: string[], count: number): string[] {

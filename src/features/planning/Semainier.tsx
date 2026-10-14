@@ -50,7 +50,7 @@ export function Semainier({ people, projects, bookings }: SemainierProps) {
     handleCellMouseUp,
     applyBooking,
     handleBookingClick,
-  } = useBookingGrid(selectedPeople, units);
+  } = useBookingGrid(selectedPeople, units, bookings);
 
   const detailProject = detailPanel?.booking.projectId ? projectsById.get(detailPanel.booking.projectId) : undefined;
 
@@ -129,8 +129,8 @@ export function Semainier({ people, projects, bookings }: SemainierProps) {
             projects={bookableProjects}
             units={units}
             cols={createPopover.cols}
-            onSelectProject={(projectId, startHalf, endHalf) => applyBooking({ projectId, startHalf, endHalf })}
-            onSelectAbsence={(absenceType, startHalf, endHalf) => applyBooking({ absenceType, startHalf, endHalf })}
+            onSelectProject={(projectId, startHalf, endHalf, targetDays) => applyBooking({ projectId, startHalf, endHalf, targetDays })}
+            onSelectAbsence={(absenceType, startHalf, endHalf, targetDays) => applyBooking({ absenceType, startHalf, endHalf, targetDays })}
           />
         </>
       )}

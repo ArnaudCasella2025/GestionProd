@@ -56,7 +56,7 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
     handleCellMouseUp,
     applyBooking,
     handleBookingClick,
-  } = useBookingGrid(people, units);
+  } = useBookingGrid(people, units, bookings);
 
   const totalDaysReserved = useMemo(() => totalPersonDaysReserved(bookings, people), [bookings, people]);
   const conflictCount = useMemo(
@@ -207,8 +207,8 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
             projects={bookableProjects}
             units={units}
             cols={createPopover.cols}
-            onSelectProject={(projectId, startHalf, endHalf) => applyBooking({ projectId, startHalf, endHalf })}
-            onSelectAbsence={(absenceType, startHalf, endHalf) => applyBooking({ absenceType, startHalf, endHalf })}
+            onSelectProject={(projectId, startHalf, endHalf, targetDays) => applyBooking({ projectId, startHalf, endHalf, targetDays })}
+            onSelectAbsence={(absenceType, startHalf, endHalf, targetDays) => applyBooking({ absenceType, startHalf, endHalf, targetDays })}
           />
         </>
       )}
