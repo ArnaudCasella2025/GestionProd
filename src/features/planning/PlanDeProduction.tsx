@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { formatFullDate, fromISODate } from '../../lib/dates';
+import { createBooking } from '../../lib/repository';
 import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 import type { Booking, Person, Project } from '../../types';
 import { ProjectResourceGrid } from './ProjectResourceGrid';
+import { distributeDays } from './autoSchedule';
 import { canManageProject, computeConflictDays, peopleForProject, projectDateRange } from './calc';
 import { buildUnits, groupByMonth, shiftAnchor, unitRangeForDates, type TimeUnit } from './timeUnits';
 
@@ -27,6 +29,13 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
   const [manualStaff, setManualStaff] = useState<Record<string, string[]>>({});
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [pickedPersonId, setPickedPersonId] = useState('');
+  // Auto-distribute form — which project it's open for, and its fields.
+  const [autoPlanFor, setAutoPlanFor] = useState<string | null>(null);
+  const [autoPersonId, setAutoPersonId] = useState('');
+  const [autoStart, setAutoStart] = useState('');
+  const [autoEnd, setAutoEnd] = useState('');
+  const [autoDays, setAutoDays] = useState('');
+  const [autoResult, setAutoResult] = useState<string | null>(null);
 
   const units = useMemo(() => buildUnits(anchor, 'annee'), [anchor]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
@@ -62,6 +71,23 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
     });
     setPickedPersonId('');
     setAddingTo(null);
+  }
+
+  function runAutoDistribute(project: Project) {
+    const person = peopleById.get(autoPersonId);
+    const days = Number(autoDays);
+    if (!person || !autoStart || !autoEnd || autoStart > autoEnd || !Number.isFinite(days) || days <= 0) return;
+    const personBookings = bookings.filter((b) => b.personId === person.id);
+    const { runs, scheduledCount, requestedCount } = distributeDays(person, autoStart, autoEnd, days, personBookings);
+    for (const run of runs) {
+      createBooking({ personId: person.id, projectId: project.id, startDate: run.startDate, endDate: run.endDate }).catch(console.error);
+    }
+    setAutoResult(
+      scheduledCount < requestedCount
+        ? `${scheduledCount} jour${scheduledCount > 1 ? 's' : ''} programmé${scheduledCount > 1 ? 's' : ''} sur ${requestedCount} demandés — ${person.name} n'a pas assez de jours disponibles sur cette période pour atteindre le total demandé.`
+        : `${scheduledCount} jour${scheduledCount > 1 ? 's' : ''} programmé${scheduledCount > 1 ? 's' : ''} pour ${person.name}, réparti${scheduledCount > 1 ? 's' : ''} du ${formatFullDate(fromISODate(autoStart))} au ${formatFullDate(fromISODate(autoEnd))}.`,
+    );
+    setAutoDays('');
   }
 
   return (
@@ -204,6 +230,76 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
                             Annuler
                           </button>
                         </div>
+                      ) : autoPlanFor === project.id ? (
+                        <>
+                          <div className="pdc-toolbar" style={{ marginBottom: 'var(--space-2)', flexWrap: 'wrap' }}>
+                            <select
+                              className="input"
+                              value={autoPersonId}
+                              onChange={(e) => setAutoPersonId(e.target.value)}
+                              style={{ width: 220 }}
+                              autoFocus
+                            >
+                              <option value="">Choisir une personne…</option>
+                              {people.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} — {p.role}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="date"
+                              className="input"
+                              value={autoStart}
+                              onChange={(e) => setAutoStart(e.target.value)}
+                              aria-label="Début de la période"
+                              style={{ width: 150 }}
+                            />
+                            <span className="text-muted">→</span>
+                            <input
+                              type="date"
+                              className="input"
+                              value={autoEnd}
+                              onChange={(e) => setAutoEnd(e.target.value)}
+                              aria-label="Fin de la période"
+                              style={{ width: 150 }}
+                            />
+                            <input
+                              type="number"
+                              className="input"
+                              min={1}
+                              step={1}
+                              placeholder="Jours"
+                              value={autoDays}
+                              onChange={(e) => setAutoDays(e.target.value)}
+                              aria-label="Nombre de jours à répartir"
+                              style={{ width: 90 }}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              disabled={!autoPersonId || !autoStart || !autoEnd || !autoDays}
+                              onClick={() => runAutoDistribute(project)}
+                            >
+                              Répartir
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => {
+                                setAutoPlanFor(null);
+                                setAutoResult(null);
+                              }}
+                            >
+                              Fermer
+                            </button>
+                          </div>
+                          {autoResult && (
+                            <p className="text-muted" style={{ marginTop: 0, marginBottom: 'var(--space-2)', fontSize: 13 }}>
+                              {autoResult}
+                            </p>
+                          )}
+                        </>
                       ) : (
                         <div className="pdc-toolbar" style={{ marginBottom: 'var(--space-2)' }}>
                           <button
@@ -213,6 +309,18 @@ export function PlanDeProduction({ people, projects, bookings }: PlanDeProductio
                             disabled={availableToAdd.length === 0}
                           >
                             + Ajouter une personne
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => {
+                              setAutoPlanFor(project.id);
+                              setAutoPersonId((id) => id || displayPeople[0]?.id || people[0]?.id || '');
+                              setAutoResult(null);
+                            }}
+                            disabled={people.length === 0}
+                          >
+                            Planifier des jours
                           </button>
                         </div>
                       ))}
