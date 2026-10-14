@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type MouseEvent } from 'react';
 import { createBooking } from '../../lib/repository';
-import type { AbsenceType, Booking, Person } from '../../types';
+import type { AbsenceType, Booking, DayHalf, Person } from '../../types';
 import type { DragSelection } from './CalendarGrid';
 import type { TimeUnit } from './timeUnits';
 
@@ -55,7 +55,7 @@ export function useBookingGrid(people: Person[], units: TimeUnit[]) {
   );
 
   const applyBooking = useCallback(
-    (payload: { projectId?: string; absenceType?: AbsenceType }) => {
+    (payload: { projectId?: string; absenceType?: AbsenceType; startHalf: DayHalf; endHalf: DayHalf }) => {
       if (!createPopover) return;
       const [rowStart, rowEnd] = createPopover.rows;
       const [colStart, colEnd] = createPopover.cols;

@@ -85,8 +85,10 @@ export function ProjectResourceGrid({
             x={createPopover.x}
             y={createPopover.y}
             projects={[project]}
-            onSelectProject={(projectId) => applyBooking({ projectId })}
-            onSelectAbsence={(absenceType) => applyBooking({ absenceType })}
+            units={units}
+            cols={createPopover.cols}
+            onSelectProject={(projectId, startHalf, endHalf) => applyBooking({ projectId, startHalf, endHalf })}
+            onSelectAbsence={(absenceType, startHalf, endHalf) => applyBooking({ absenceType, startHalf, endHalf })}
           />
         </>
       )}

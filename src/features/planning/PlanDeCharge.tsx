@@ -205,8 +205,10 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
             x={createPopover.x}
             y={createPopover.y}
             projects={bookableProjects}
-            onSelectProject={(projectId) => applyBooking({ projectId })}
-            onSelectAbsence={(absenceType) => applyBooking({ absenceType })}
+            units={units}
+            cols={createPopover.cols}
+            onSelectProject={(projectId, startHalf, endHalf) => applyBooking({ projectId, startHalf, endHalf })}
+            onSelectAbsence={(absenceType, startHalf, endHalf) => applyBooking({ absenceType, startHalf, endHalf })}
           />
         </>
       )}
