@@ -10,7 +10,7 @@ import {
   updateDoc,
   writeBatch,
 } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { db } from './firebase';
 import type {
   AbsenceRequest,
@@ -48,8 +48,19 @@ function useCollectionData<T>(name: string): { data: T[]; loading: boolean } {
   return { data, loading };
 }
 
-export const usePeople = () => useCollectionData<Person>('people');
-export const useProjects = () => useCollectionData<Project>('projects');
+export function usePeople(): { data: Person[]; loading: boolean } {
+  const { data, loading } = useCollectionData<Person>('people');
+  // Firestore's own order (roughly creation order) isn't useful to a human
+  // scanning a list — every screen that lists people wants them sorted the
+  // same, readable way.
+  const sorted = useMemo(() => [...data].sort((a, b) => a.name.localeCompare(b.name, 'fr')), [data]);
+  return { data: sorted, loading };
+}
+export function useProjects(): { data: Project[]; loading: boolean } {
+  const { data, loading } = useCollectionData<Project>('projects');
+  const sorted = useMemo(() => [...data].sort((a, b) => a.name.localeCompare(b.name, 'fr')), [data]);
+  return { data: sorted, loading };
+}
 export const useBookings = () => useCollectionData<Booking>('bookings');
 export const useRequests = () => useCollectionData<AbsenceRequest>('requests');
 export const useTimesheets = () => useCollectionData<TimesheetDay>('timesheets');
