@@ -3,7 +3,7 @@ import { toISODate } from '../../lib/dates';
 import { deleteAllocationOverride, setAllocationOverride } from '../../lib/repository';
 import { useTestRole } from '../../lib/testRole';
 import type { AllocationOverride, Booking, Person, Project, TimesheetDay } from '../../types';
-import { bookedCostInMonth, bookedDaysInMonth, realCostInMonth, realDaysInMonth } from './allocationCalc';
+import { bookedCostInMonth, bookedDaysInMonth, expectedWorkDays, realCostInMonth, realDaysInMonth } from './allocationCalc';
 
 interface PermanentAllocationsProps {
   people: Person[];
@@ -39,6 +39,27 @@ const MONTH_STATUS_TAG_CLASS: Record<MonthStatus, string> = {
   past: 'tag-accent',
   current: 'tag-accent-2',
   future: 'tag-outline',
+};
+
+type StaffingStatus = 'under' | 'correct' | 'over';
+
+/** Whether a total (in days) matches what's expected, within half a day of
+ * tolerance — tighter than that would flag harmless rounding as an alert. */
+function staffingStatus(assignedDays: number, expectedDays: number): StaffingStatus {
+  const diff = assignedDays - expectedDays;
+  if (Math.abs(diff) <= 0.5) return 'correct';
+  return diff > 0 ? 'over' : 'under';
+}
+
+const STAFFING_LABEL: Record<StaffingStatus, string> = {
+  correct: 'Correct',
+  under: 'Sous-affecté',
+  over: 'Sur-affecté',
+};
+const STAFFING_TAG_CLASS: Record<StaffingStatus, string> = {
+  correct: 'tag-success',
+  under: 'tag-neutral',
+  over: 'tag-accent-2',
 };
 
 export function PermanentAllocations({ people, projects, bookings, timesheets, allocationOverrides }: PermanentAllocationsProps) {
@@ -223,6 +244,7 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
                     <div className="pa-budget-hint">Budget : {project.budget.toLocaleString('fr-FR')} €</div>
                   </th>
                 ))}
+                <th style={{ minWidth: 130 }}>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -271,6 +293,19 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
                       </td>
                     );
                   })}
+                  {(() => {
+                    const totalDays = relevantProjects.reduce((sum, p) => sum + daysFor(p.id, month), 0);
+                    const expected = expectedWorkDays(year, month, person);
+                    const status = staffingStatus(totalDays, expected);
+                    return (
+                      <td className="pa-total-cell">
+                        <div className="pa-total-cell-inner">
+                          <div className="pa-total-days">{totalDays.toLocaleString('fr-FR')} j</div>
+                          <span className={`tag ${STAFFING_TAG_CLASS[status]}`}>{STAFFING_LABEL[status]}</span>
+                        </div>
+                      </td>
+                    );
+                  })()}
                 </tr>
                 );
               })}
@@ -284,6 +319,22 @@ export function PermanentAllocations({ people, projects, bookings, timesheets, a
                     </td>
                   );
                 })}
+                {(() => {
+                  const yearTotalDays = relevantProjects.reduce(
+                    (sum, p) => sum + MONTHS.reduce((s, month) => s + daysFor(p.id, month), 0),
+                    0,
+                  );
+                  const yearExpected = MONTHS.reduce((sum, month) => sum + expectedWorkDays(year, month, person), 0);
+                  const status = staffingStatus(yearTotalDays, yearExpected);
+                  return (
+                    <td className="pa-total-cell">
+                      <div className="pa-total-cell-inner">
+                        <div className="pa-total-days">{yearTotalDays.toLocaleString('fr-FR')} j</div>
+                        <span className={`tag ${STAFFING_TAG_CLASS[status]}`}>{STAFFING_LABEL[status]}</span>
+                      </div>
+                    </td>
+                  );
+                })()}
               </tr>
             </tbody>
           </table>

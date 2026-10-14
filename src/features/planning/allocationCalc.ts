@@ -1,10 +1,25 @@
 import { isWeekend, toISODate } from '../../lib/dates';
-import { HOURS_PER_DAY, type Booking, type Person, type SalaryRecord, type TimesheetDay } from '../../types';
+import { DEFAULT_WORK_DAYS_PER_WEEK, HOURS_PER_DAY, type Booking, type Person, type SalaryRecord, type TimesheetDay } from '../../types';
 import { coveredHalves, isPersonCustomOffDay } from './calc';
 import { dailyRateOn } from './salaryCalc';
 
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
+}
+
+/** How many days this person is contractually expected to work in a given
+ * calendar month — weekdays in the month, scaled by their work-days-per-week
+ * ratio (e.g. 4/5 for a 4/5e), rounded to the nearest half-day. The target
+ * Affectation des permanents compares actual bookings against, to flag
+ * under/over-staffing. */
+export function expectedWorkDays(year: number, month: number, person: Person | undefined): number {
+  const total = daysInMonth(year, month);
+  let weekdayCount = 0;
+  for (let day = 1; day <= total; day++) {
+    if (!isWeekend(new Date(year, month - 1, day))) weekdayCount++;
+  }
+  const ratio = (person?.workDaysPerWeek ?? DEFAULT_WORK_DAYS_PER_WEEK) / 5;
+  return Math.round(weekdayCount * ratio * 2) / 2;
 }
 
 /** Days booked (Plan de charge) on a project within one calendar month, for
