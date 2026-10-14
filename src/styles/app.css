@@ -741,7 +741,12 @@
   z-index: 1;
 }
 .ppr-expanded {
-  padding: 0 0 var(--space-3) 32px;
+  /* No left padding here — the expanded grid's own timeline columns must
+     start at the same x as the project's overview bar above it (both use
+     the same per-week pixel widths), or the overview bar reads as falling
+     short of the actual bookings shown once expanded, even though its
+     underlying date range is correct. */
+  padding: 0 0 var(--space-3) 0;
   width: fit-content;
 }
 .ppr-expanded-empty {
