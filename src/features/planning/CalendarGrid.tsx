@@ -29,7 +29,7 @@ interface CalendarGridProps {
   onCellMouseDown: (row: number, col: number) => void;
   onCellMouseEnter: (row: number, col: number) => void;
   onCellMouseUp: (evt: MouseEvent<HTMLDivElement>) => void;
-  onBookingClick: (booking: Booking, evt: MouseEvent) => void;
+  onBookingClick: (bookings: Booking[], evt: MouseEvent) => void;
 }
 
 const ROW_HEIGHT = 52;
@@ -216,19 +216,53 @@ export function CalendarGrid({
                     allSegments.sort((a, b) => a.segStart - b.segStart);
 
                     // Several bookings for the same project/absence that land
-                    // in immediately touching columns — e.g. one day per week
-                    // spread by "Nombre de jours à réserver" across several
-                    // adjacent week columns in "année" zoom — read as one
-                    // continuous assignment, not a row of separated chips, so
-                    // their shared edge loses its gutter and rounded corner
-                    // (each day still stays its own click target underneath).
-                    const connectsRight = allSegments.map((seg, i) => {
-                      const next = allSegments[i + 1];
-                      return Boolean(next && next.key === seg.key && next.segStart === seg.segEnd + 1 && !seg.rightTrimmed && !next.leftTrimmed);
-                    });
-                    const connectsLeft = allSegments.map((seg, i) => {
-                      const prev = allSegments[i - 1];
-                      return Boolean(prev && prev.key === seg.key && prev.segEnd === seg.segStart - 1 && !prev.rightTrimmed && !seg.leftTrimmed);
+                    // in touching or overlapping columns are grouped into one
+                    // visual run — e.g. one day per week spread by "Nombre de
+                    // jours à réserver" across several adjacent week columns
+                    // in "année" zoom, or a run that crosses a weekend (one
+                    // Booking merged Fri→Mon by the auto-distribute engine)
+                    // landing in the same week-unit as another day picked
+                    // separately. Two bookings can genuinely *overlap* at
+                    // week granularity like that even though their actual
+                    // days never do — without grouping, each would still
+                    // draw its own full-width bar and label on top of the
+                    // other's. Groups share: a flattened seam instead of a
+                    // gutter and rounded corner at every interior edge, one
+                    // label spanning the whole union, and one click target
+                    // (any day in the group opens a detail panel listing
+                    // every booking in it, not just whichever one the click
+                    // happened to land on).
+                    const groupId: number[] = [];
+                    {
+                      let current = -1;
+                      let currentKey: string | null = null;
+                      let currentMaxEnd = -Infinity;
+                      allSegments.forEach((seg, i) => {
+                        const touches = seg.segStart === currentMaxEnd + 1 && !allSegments[i - 1]?.rightTrimmed && !seg.leftTrimmed;
+                        const overlaps = seg.segStart <= currentMaxEnd;
+                        if (current >= 0 && seg.key === currentKey && (touches || overlaps)) {
+                          groupId[i] = current;
+                        } else {
+                          current++;
+                          groupId[i] = current;
+                          currentKey = seg.key;
+                          currentMaxEnd = -Infinity;
+                        }
+                        currentMaxEnd = Math.max(currentMaxEnd, seg.segEnd);
+                      });
+                    }
+
+                    const groupBounds = new Map<number, { left: number; right: number }>();
+                    const groupBookingsById = new Map<number, Map<string, Booking>>();
+                    allSegments.forEach((seg, i) => {
+                      const g = groupId[i];
+                      const bounds = groupBounds.get(g);
+                      const right = seg.left + seg.width;
+                      if (!bounds) groupBounds.set(g, { left: seg.left, right });
+                      else groupBounds.set(g, { left: Math.min(bounds.left, seg.left), right: Math.max(bounds.right, right) });
+                      const byId = groupBookingsById.get(g) ?? new Map<string, Booking>();
+                      byId.set(seg.booking.id, seg.booking);
+                      groupBookingsById.set(g, byId);
                     });
 
                     // A run's label can't just live inside its first bar's own
@@ -237,38 +271,35 @@ export function CalendarGrid({
                     // bars would paint over it. It's rendered separately
                     // instead, after every bar, so it naturally paints on top.
                     const labelOverlays: { key: string; left: number; width: number; label: string }[] = [];
+                    const labeledGroups = new Set<number>();
 
                     const bars = allSegments.map((seg, i) => {
                       const { booking, segIdx, project, label, hasConflict, left, width, noteDots } = seg;
-                      const connRight = connectsRight[i];
-                      const connLeft = connectsLeft[i];
+                      const g = groupId[i];
+                      const bounds = groupBounds.get(g)!;
+                      const isGroupFirst = left === bounds.left;
+                      const isGroupLast = left + width === bounds.right;
 
                       const style: CSSProperties = {
                         left,
-                        width: Math.max(connRight ? width : width - 3, 4),
+                        width: Math.max(isGroupLast ? width - 3 : width, 4),
                         background: project ? project.color : 'repeating-linear-gradient(45deg, var(--color-neutral-400), var(--color-neutral-400) 4px, var(--color-neutral-200) 4px, var(--color-neutral-200) 8px)',
                       };
-                      if (connLeft) {
+                      if (!isGroupFirst) {
                         style.borderTopLeftRadius = 0;
                         style.borderBottomLeftRadius = 0;
                       }
-                      if (connRight) {
+                      if (!isGroupLast) {
                         style.borderTopRightRadius = 0;
                         style.borderBottomRightRadius = 0;
                       }
 
-                      // The label is only drawn on the first segment of a
-                      // connected run, sized to the run's full combined width
-                      // instead of clipped to this one day's narrow slice.
-                      const showLabel = segIdx === 0 && !connLeft;
-                      if (showLabel) {
-                        let runWidth = width;
-                        let cursor = i + 1;
-                        while (allSegments[cursor] && connectsRight[cursor - 1]) {
-                          runWidth += allSegments[cursor].width;
-                          cursor++;
-                        }
-                        labelOverlays.push({ key: `${booking.id}-${segIdx}-label`, left, width: runWidth, label });
+                      // One label per group, sized to the group's full
+                      // combined width instead of clipped to one booking's
+                      // narrow slice (or duplicated across overlapping ones).
+                      if (segIdx === 0 && !labeledGroups.has(g)) {
+                        labeledGroups.add(g);
+                        labelOverlays.push({ key: `group-${g}-label`, left: bounds.left, width: bounds.right - bounds.left, label });
                       }
 
                       return (
@@ -277,7 +308,7 @@ export function CalendarGrid({
                           type="button"
                           className={`pdc-bar${hasConflict ? ' is-conflict' : ''}`}
                           style={style}
-                          onClick={(e) => onBookingClick(booking, e)}
+                          onClick={(e) => onBookingClick(Array.from(groupBookingsById.get(g)!.values()), e)}
                           title={label}
                         >
                           {noteDots.map((dot) => (

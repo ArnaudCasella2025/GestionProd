@@ -83,7 +83,7 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
 
   const handleEditFromConflicts = useCallback((booking: Booking, evt: MouseEvent) => {
     setConflictsOpen(false);
-    setDetailPanel({ x: evt.clientX, y: evt.clientY, booking });
+    setDetailPanel({ x: evt.clientX, y: evt.clientY, bookings: [booking] });
   }, [setDetailPanel]);
 
   const handleGoToPerson = useCallback((personId: string) => {
@@ -98,8 +98,8 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
     el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, []);
 
-  const detailPerson = detailPanel ? peopleById.get(detailPanel.booking.personId) : undefined;
-  const detailProject = detailPanel?.booking.projectId ? projectsById.get(detailPanel.booking.projectId) : undefined;
+  const detailPerson = detailPanel ? peopleById.get(detailPanel.bookings[0].personId) : undefined;
+  const detailProject = detailPanel?.bookings[0].projectId ? projectsById.get(detailPanel.bookings[0].projectId!) : undefined;
 
   const showEmptyState = !peopleLoading && people.length === 0;
 
@@ -217,22 +217,22 @@ export function PlanDeCharge({ people, peopleLoading, projects, bookings }: Plan
         <>
           <div className="pdc-popover-scrim" onClick={() => setDetailPanel(null)} />
           <DetailPanel
-            key={detailPanel.booking.id}
+            key={detailPanel.bookings[0].id}
             x={detailPanel.x}
             y={detailPanel.y}
-            booking={detailPanel.booking}
+            bookings={detailPanel.bookings}
             person={detailPerson}
             project={detailProject}
             canManage={role !== 'responsable' || !detailProject || canManageProject(detailProject, role, testPersonId)}
             onRelease={() => {
-              deleteBooking(detailPanel.booking.id).catch(console.error);
+              Promise.all(detailPanel.bookings.map((b) => deleteBooking(b.id))).catch(console.error);
               setDetailPanel(null);
             }}
             onSaveDates={(startDate, endDate, startHalf, endHalf) => {
-              updateBookingDates(detailPanel.booking.id, startDate, endDate, startHalf, endHalf).catch(console.error);
+              updateBookingDates(detailPanel.bookings[0].id, startDate, endDate, startHalf, endHalf).catch(console.error);
               setDetailPanel(null);
             }}
-            onSaveDayNote={(date, note) => setBookingDayNote(detailPanel.booking.id, date, note).catch(console.error)}
+            onSaveDayNote={(bookingId, date, note) => setBookingDayNote(bookingId, date, note).catch(console.error)}
           />
         </>
       )}

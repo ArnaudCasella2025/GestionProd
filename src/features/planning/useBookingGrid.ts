@@ -15,7 +15,7 @@ interface CreatePopoverState {
 interface DetailPanelState {
   x: number;
   y: number;
-  booking: Booking;
+  bookings: Booking[];
 }
 
 /**
@@ -90,9 +90,9 @@ export function useBookingGrid(people: Person[], units: TimeUnit[], allBookings:
     [createPopover, units, people, allBookings],
   );
 
-  const handleBookingClick = useCallback((booking: Booking, evt: MouseEvent) => {
+  const handleBookingClick = useCallback((bookings: Booking[], evt: MouseEvent) => {
     evt.stopPropagation();
-    setDetailPanel({ x: evt.clientX, y: evt.clientY, booking });
+    setDetailPanel({ x: evt.clientX, y: evt.clientY, bookings });
   }, []);
 
   return {

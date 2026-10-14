@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { addDays, formatDayLabel, fromISODate, isWeekend, toISODate } from '../../lib/dates';
+import { addDays, formatDayLabel, formatFullDate, fromISODate, isWeekend, toISODate } from '../../lib/dates';
 import type { Booking, DayHalf, Person, Project } from '../../types';
 import { bookingLabel, coveredHalves } from './calc';
 import { usePopoverPosition } from './usePopoverPosition';
@@ -8,7 +8,11 @@ import { useTestRole } from '../../lib/testRole';
 interface DetailPanelProps {
   x: number;
   y: number;
-  booking: Booking;
+  /** Every booking belonging to the clicked visual block — a single entry
+   * for an ordinary booking, or several for a run of touching bars (e.g.
+   * one day per week spread by "Nombre de jours à réserver") that reads as
+   * one continuous block but is really several separate bookings. */
+  bookings: Booking[];
   person: Person | undefined;
   project: Project | undefined;
   /** False for a Responsable viewing a booking on a project they don't
@@ -16,7 +20,7 @@ interface DetailPanelProps {
   canManage: boolean;
   onRelease: () => void;
   onSaveDates: (startDate: string, endDate: string, startHalf: DayHalf, endHalf: DayHalf) => void;
-  onSaveDayNote: (date: string, note: string) => void;
+  onSaveDayNote: (bookingId: string, date: string, note: string) => void;
 }
 
 /** Weekdays (Mon-Fri) in an inclusive date range — matches the calendar bar's
@@ -40,7 +44,110 @@ function durationDays(startDate: string, endDate: string, startHalf: DayHalf, en
   return total;
 }
 
-export function DetailPanel({ x, y, booking, person, project, canManage, onRelease, onSaveDates, onSaveDayNote }: DetailPanelProps) {
+export function DetailPanel({ x, y, bookings, person, project, canManage, onRelease, onSaveDates, onSaveDayNote }: DetailPanelProps) {
+  const { role } = useTestRole();
+  const canSeeFinancials = role !== 'user';
+  const { ref, style } = usePopoverPosition(x, y);
+  const booking = bookings[0];
+  const isGroup = bookings.length > 1;
+
+  if (isGroup) {
+    const sorted = [...bookings].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const dayToBookingId = new Map<string, string>();
+    for (const b of sorted) {
+      for (const iso of weekdaysInRange(b.startDate, b.endDate)) {
+        if (!dayToBookingId.has(iso)) dayToBookingId.set(iso, b.id);
+      }
+    }
+    const noteDays = Array.from(dayToBookingId.keys()).sort();
+    const totalDays = sorted.reduce((sum, b) => sum + durationDays(b.startDate, b.endDate, b.startHalf ?? 'AM', b.endHalf ?? 'PM'), 0);
+    const cost = person ? totalDays * person.dailyRate : 0;
+    const firstDate = sorted[0].startDate;
+    const lastDate = sorted[sorted.length - 1].endDate;
+
+    return (
+      <div ref={ref} className="pdc-popover card elev-lg" style={style}>
+        <div className="pdc-detail-title">{person?.name ?? 'Ressource inconnue'}</div>
+        <div className="pdc-detail-row">
+          <span className="text-muted">Sur</span>
+          <span>{bookingLabel(booking, project)}</span>
+        </div>
+
+        {!canManage && (
+          <p className="text-muted" style={{ fontSize: 13, margin: 0 }}>
+            Lecture seule — vous n'êtes pas responsable de ce projet.
+          </p>
+        )}
+
+        <div className="pdc-detail-row">
+          <span className="text-muted">Période</span>
+          <span>
+            {totalDays.toLocaleString('fr-FR')} j du {formatFullDate(fromISODate(firstDate))} au {formatFullDate(fromISODate(lastDate))}
+          </span>
+        </div>
+
+        {project && canSeeFinancials && (
+          <div className="pdc-detail-row">
+            <span className="text-muted">Coût</span>
+            <span>
+              {totalDays.toLocaleString('fr-FR')} j · {cost.toLocaleString('fr-FR')} €
+            </span>
+          </div>
+        )}
+
+        {noteDays.length > 0 && (
+          <div className="field">
+            <label>Notes par jour</label>
+            <div className="pdc-daynotes">
+              {noteDays.map((iso) => {
+                const bookingId = dayToBookingId.get(iso)!;
+                const owner = sorted.find((b) => b.id === bookingId);
+                return (
+                  <div className="pdc-daynote-row" key={iso}>
+                    <span className="pdc-daynote-date">{formatDayLabel(fromISODate(iso))}</span>
+                    <input
+                      className="input"
+                      placeholder="Annotation…"
+                      defaultValue={owner?.dayNotes?.[iso] ?? ''}
+                      disabled={!canManage}
+                      onBlur={(e) => {
+                        if (e.target.value.trim() !== (owner?.dayNotes?.[iso] ?? '')) {
+                          onSaveDayNote(bookingId, iso, e.target.value);
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {canManage && (
+          <button type="button" className="btn btn-secondary btn-block" onClick={onRelease}>
+            Libérer les {sorted.length} jours
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return <SingleBookingDetail {...{ x, y, booking, person, project, canManage, onRelease, onSaveDates, onSaveDayNote }} />;
+}
+
+interface SingleBookingDetailProps {
+  x: number;
+  y: number;
+  booking: Booking;
+  person: Person | undefined;
+  project: Project | undefined;
+  canManage: boolean;
+  onRelease: () => void;
+  onSaveDates: (startDate: string, endDate: string, startHalf: DayHalf, endHalf: DayHalf) => void;
+  onSaveDayNote: (bookingId: string, date: string, note: string) => void;
+}
+
+function SingleBookingDetail({ x, y, booking, person, project, canManage, onRelease, onSaveDates, onSaveDayNote }: SingleBookingDetailProps) {
   const { role } = useTestRole();
   const canSeeFinancials = role !== 'user';
   const [startDate, setStartDate] = useState(booking.startDate);
@@ -199,7 +306,7 @@ export function DetailPanel({ x, y, booking, person, project, canManage, onRelea
                     disabled={!canManage}
                     onBlur={(e) => {
                       if (e.target.value.trim() !== (booking.dayNotes?.[iso] ?? '')) {
-                        onSaveDayNote(iso, e.target.value);
+                        onSaveDayNote(booking.id, iso, e.target.value);
                       }
                     }}
                   />
