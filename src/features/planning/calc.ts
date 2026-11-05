@@ -170,15 +170,20 @@ export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
 /**
  * Days (ISO) where a person has more than one *project* booking overlapping
  * the same half of the day — a double-booking conflict. A morning booking on
- * one project and an afternoon booking on another is not a conflict.
+ * one project and an afternoon booking on another is not a conflict. A
+ * project booking that overlaps an approved absence (vacation, sick leave…)
+ * on that same half is also a conflict — the person isn't actually
+ * available for it — even though there's only ever one project booking that
+ * day: approving a leave request never touches existing project bookings,
+ * so without this the two would just silently coexist.
  */
 export function computeConflictDays(bookings: Booking[], people: Person[]): Map<string, Set<string>> {
   const peopleById = new Map(people.map((p) => [p.id, p]));
   const conflictsByPerson = new Map<string, Set<string>>();
-  const countByPersonDayHalf = new Map<string, number>();
+  const projectCountByPersonDayHalf = new Map<string, number>();
+  const absenceDayHalfKeys = new Set<string>();
 
   for (const booking of bookings) {
-    if (!booking.projectId) continue;
     const person = peopleById.get(booking.personId);
     const start = fromISODate(booking.startDate);
     const end = fromISODate(booking.endDate);
@@ -187,13 +192,17 @@ export function computeConflictDays(bookings: Booking[], people: Person[]): Map<
       const iso = toISODate(d);
       for (const half of coveredHalves(booking, iso)) {
         const key = `${booking.personId}__${iso}__${half}`;
-        countByPersonDayHalf.set(key, (countByPersonDayHalf.get(key) ?? 0) + 1);
+        if (booking.projectId) {
+          projectCountByPersonDayHalf.set(key, (projectCountByPersonDayHalf.get(key) ?? 0) + 1);
+        } else {
+          absenceDayHalfKeys.add(key);
+        }
       }
     }
   }
 
-  for (const [key, count] of countByPersonDayHalf) {
-    if (count > 1) {
+  for (const [key, count] of projectCountByPersonDayHalf) {
+    if (count > 1 || absenceDayHalfKeys.has(key)) {
       const [personId, iso] = key.split('__');
       if (!conflictsByPerson.has(personId)) conflictsByPerson.set(personId, new Set());
       conflictsByPerson.get(personId)!.add(iso);
@@ -206,7 +215,7 @@ export function computeConflictDays(bookings: Booking[], people: Person[]): Map<
 /** The project bookings of a person that touch at least one of their conflict days. */
 export function conflictingBookingsForPerson(personId: string, bookings: Booking[], conflictDays: Set<string>): Booking[] {
   return bookings.filter((b) => {
-    if (b.personId !== personId || !b.projectId) return false;
+    if (b.personId !== personId) return false;
     const start = fromISODate(b.startDate);
     const end = fromISODate(b.endDate);
     for (let d = start; d <= end; d = addDays(d, 1)) {

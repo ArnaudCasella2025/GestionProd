@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react';
 import { formatFullDate, fromISODate } from '../../lib/dates';
 import type { Booking, Person, Project } from '../../types';
-import { conflictingBookingsForPerson } from './calc';
+import { bookingLabel, conflictingBookingsForPerson } from './calc';
 
 interface ConflictsModalProps {
   conflictsByPerson: Map<string, Set<string>>;
@@ -42,16 +42,19 @@ export function ConflictsModal({
                   <div className="pdc-conflict-person">
                     {person?.name ?? 'Ressource inconnue'}
                     <span className="tag tag-accent-2">
-                      {conflictDays.size} jour{conflictDays.size > 1 ? 's' : ''} en double affectation
+                      {conflictDays.size} jour{conflictDays.size > 1 ? 's' : ''} en conflit
                     </span>
                   </div>
                   {conflicting.map((booking) => {
                     const project = booking.projectId ? projectsById.get(booking.projectId) : undefined;
                     return (
                       <div className="pdc-conflict-row" key={booking.id}>
-                        <span className="pdc-color-dot" style={{ background: project?.color }} />
+                        <span
+                          className={`pdc-color-dot${project ? '' : ' pdc-color-dot-hatch'}`}
+                          style={project ? { background: project.color } : undefined}
+                        />
                         <span className="pdc-conflict-row-label">
-                          {project?.name ?? '—'}
+                          {bookingLabel(booking, project)}
                           <span className="text-muted">
                             {' '}
                             · {formatFullDate(fromISODate(booking.startDate))}

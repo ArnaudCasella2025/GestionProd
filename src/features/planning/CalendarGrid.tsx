@@ -213,7 +213,22 @@ export function CalendarGrid({
                       });
                     });
 
-                    allSegments.sort((a, b) => a.segStart - b.segStart);
+                    // An absence always paints over a project booking it
+                    // overlaps (approving a leave request never touches
+                    // existing project bookings, so the two can genuinely
+                    // coexist in the data) — otherwise whichever one sorts
+                    // later by date alone wins the DOM-order tie-break at
+                    // random, which reads as the leave period being chopped
+                    // up by the project bars instead of one continuous
+                    // block. The underlying project booking still shows
+                    // its conflict ring wherever it peeks out unobscured,
+                    // and the overlap itself is flagged by computeConflictDays.
+                    allSegments.sort((a, b) => {
+                      const aIsAbsence = !a.booking.projectId;
+                      const bIsAbsence = !b.booking.projectId;
+                      if (aIsAbsence !== bIsAbsence) return aIsAbsence ? 1 : -1;
+                      return a.segStart - b.segStart;
+                    });
 
                     // Several bookings for the same project/absence that land
                     // in touching or overlapping columns are grouped into one
