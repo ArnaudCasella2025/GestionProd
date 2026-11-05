@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { createProject, deleteProject, updateProject } from '../../lib/repository';
 import { resolveTestPersonId, useTestRole } from '../../lib/testRole';
 import type { Booking, Person, Project } from '../../types';
-import { canManageProject, computeProjectProgress, peopleForProject } from './calc';
+import { canManageProject, computeProjectBudget, computeProjectProgress, peopleForProject } from './calc';
 import { ProjectDetail } from './ProjectDetail';
 import { ProjectModal } from './ProjectModal';
 
@@ -83,7 +83,21 @@ export function Projects({ projects, bookings, people }: ProjectsProps) {
           </thead>
           <tbody>
             {visible.map((project) => {
-              const progress = computeProjectProgress(project, bookings);
+              // For roles that can see financials, "Avancement" tracks the
+              // share of the overall budget already spent — consistent with
+              // the Budget section shown elsewhere (ProjectDetail,
+              // ProjectCards). A workload-based "share of booked days
+              // already past" would read as project progress at a glance,
+              // but is only ever computed against whatever has been booked
+              // so far, not the project's real total scope — so e.g. a
+              // project only partly staffed so far can show 50% "done" days
+              // into its first (and so far only) assignment. The 'user' role
+              // has no budget visibility, so it keeps that workload measure.
+              const progress = canSeeFinancials
+                ? project.budget > 0
+                  ? Math.round((computeProjectBudget(project, bookings, people).consumed / project.budget) * 100)
+                  : 0
+                : computeProjectProgress(project, bookings);
               const canManage = canManageProject(project, role, testPersonId);
               const responsable = project.responsableId ? peopleById.get(project.responsableId) : undefined;
               return (
@@ -104,7 +118,7 @@ export function Projects({ projects, bookings, people }: ProjectsProps) {
                   {canSeeFinancials && <td>{(project.budget / 1000).toFixed(0)} k€</td>}
                   <td style={{ minWidth: 140 }}>
                     <div className="pdc-progress-track" style={{ marginBottom: 4 }}>
-                      <div className="pdc-progress-real" style={{ width: `${progress}%` }} />
+                      <div className="pdc-progress-real" style={{ width: `${Math.min(progress, 100)}%` }} />
                     </div>
                     <span className="text-muted" style={{ fontSize: 12 }}>
                       {progress} %
